@@ -19,13 +19,11 @@ export default function Ephemeral() {
   }, []);
 
   return (
-    <div className="relative flex">
-      <div className="absolute pointer-events-none right-0">
-        <div ref={textRef} className="text-xl" />
-      </div>
+    <div className="relative flex text-xl h-[1lh]">
+      <div ref={textRef} className="absolute pointer-events-none right-0" />
 
       {/* Custom caret */}
-      <div className="absolute inset-y-0 pointer-events-none h-auto">
+      <div className="pointer-events-none h-auto">
         <Caret />
       </div>
 
@@ -39,7 +37,7 @@ export default function Ephemeral() {
         onBlur={() => editableRef.current?.focus()}
         onInput={handleInput}
         onCompositionEnd={handleInput}
-        className="absolute inset-0 w-full h-10 outline-none
+        className="relative w-0 h-full outline-none overflow-hidden
                    text-transparent caret-transparent selection:bg-transparent"
       />
     </div>
@@ -48,6 +46,8 @@ export default function Ephemeral() {
 
 function Caret() {
   return (
-    <div className={cn("w-0.5 border-r-2 bg-gray-600 h-10", styles["caret"])} />
+    <div
+      className={cn("w-0.5 border-r-2 bg-gray-600 h-full", styles["caret"])}
+    />
   );
 }
