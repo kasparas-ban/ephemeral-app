@@ -20,7 +20,10 @@ export default function Ephemeral() {
 
   return (
     <div className="relative flex text-xl h-[1lh]">
-      <div ref={textRef} className="absolute pointer-events-none right-0" />
+      <div
+        ref={textRef}
+        className="absolute pointer-events-none right-0.5 whitespace-nowrap"
+      />
 
       {/* Custom caret */}
       <div className="pointer-events-none h-auto">
