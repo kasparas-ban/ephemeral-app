@@ -1,9 +1,17 @@
 .caret {
-  animation: blink 1s step-start infinite;
+  animation: blink 1.1s step-start infinite;
 }
 
 @keyframes blink {
+  0% {
+    opacity: 1;
+    animation-timing-function: ease-in;
+  }
   50% {
     opacity: 0;
+    animation-timing-function: ease-out;
+  }
+  100% {
+    opacity: 1;
   }
 }

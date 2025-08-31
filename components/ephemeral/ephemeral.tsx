@@ -1,17 +1,27 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import styles from "./styles.module.css";
 import { cn } from "@/lib/utils";
+import { atom, useAtom } from "jotai";
+import styles from "./styles.module.css";
+
+const isCaretPlaying = atom(true);
 
 export default function Ephemeral() {
   const editableRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
 
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [, setIsPlaying] = useAtom(isCaretPlaying);
+
   const handleInput = () => {
-    if (textRef.current && editableRef.current) {
-      textRef.current.textContent = editableRef.current.innerText;
-    }
+    if (!textRef.current || !editableRef.current) return;
+
+    textRef.current.textContent = editableRef.current.innerText;
+    setIsPlaying(false);
+
+    timeoutRef.current && clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => setIsPlaying(true), 100);
   };
 
   useEffect(() => {
@@ -48,9 +58,15 @@ export default function Ephemeral() {
 }
 
 function Caret() {
+  const [isPlaying] = useAtom(isCaretPlaying);
+
   return (
     <div
-      className={cn("w-0.5 border-r-2 bg-gray-600 h-full", styles["caret"])}
+      className={cn(
+        "w-0.5 border-r-2 bg-gray-600 h-full",
+        isPlaying && styles["caret"]
+      )}
+      //   className={cn("w-0.5 border-r-2 bg-gray-600 h-full", styles["caret"])}
     />
   );
 }
