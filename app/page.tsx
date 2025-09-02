@@ -1,10 +1,12 @@
 import Ephemeral from "@/components/ephemeral/ephemeral";
+import WiggleLine from "@/components/ephemeral/wiggly-line";
 
 export default function Home() {
   return (
     <div className="font-sans">
       <main className="flex items-center justify-center h-screen p-4">
-        <Ephemeral />
+        {/* <Ephemeral /> */}
+        <WiggleLine />
       </main>
     </div>
   );
