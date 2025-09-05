@@ -55,7 +55,7 @@ type WiggleLineProps = {
 export function WiggleLine({
   width = 400,
   height = 180,
-  points = 24,
+  points = 4,
   amplitude = 40,
   speed = 0.05,
   targetIntervalMs = 2400,

@@ -3,7 +3,6 @@
 import { FormEvent, RefObject, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { atom, useAtom } from "jotai";
-import { useAnimate } from "motion/react-mini";
 import styles from "./styles.module.css";
 
 const isCaretPlaying = atom(true);
