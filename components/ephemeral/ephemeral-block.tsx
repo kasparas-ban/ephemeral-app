@@ -87,13 +87,14 @@ function FloatingText({
   useEffect(() => {
     if (!text.char) return;
 
-    // Create a new span for the new character
-    const textSpan = document.createElement("span");
-    textSpan.className = "inline-block absolute";
-    textSpan.textContent = text.char ?? "";
-
-    // Check if any chars in the DOM
     const spans = textRef.current?.querySelectorAll("span");
+    const lastWordIdx = parseInt(
+      Array.from(spans ?? [])
+        .at(-1)
+        ?.getAttribute("data-word-idx") ?? "0"
+    );
+    const isNewWord = text.char === "\u00A0";
+    const currentWordIdx = isNewWord ? lastWordIdx + 1 : lastWordIdx;
 
     spans?.forEach((span, idx) => {
       animate(
@@ -103,7 +104,11 @@ function FloatingText({
       );
     });
 
-    // Append the new character
+    // Create a new span for the new character
+    const textSpan = document.createElement("span");
+    textSpan.className = "inline-block absolute";
+    textSpan.textContent = text.char ?? "";
+    textSpan.setAttribute("data-word-idx", `${currentWordIdx}`);
     textRef.current?.append(textSpan);
 
     // Animate the new character
@@ -113,7 +118,7 @@ function FloatingText({
       { duration: 0.1, ease: "easeOut" }
     );
 
-    const y = [randomFloat(-2, 2), randomFloat(-2, 2)];
+    const y = [randomFloat(-1.5, 1.5), randomFloat(-1.5, 1.5)];
     const rotate = [randomFloat(-2, 2), randomFloat(-2, 2)];
 
     // Animate the to the initial floating position
@@ -134,6 +139,32 @@ function FloatingText({
         }
       );
     });
+
+    // if (isNewWord) {
+    //   const word = textRef.current?.querySelector(
+    //     `[data-word-idx="${lastWordIdx}"]`
+    //   );
+    //   if (!word) return;
+
+    //   const y = [randomFloat(-30, 30), randomFloat(-30, 30)];
+
+    //   animate(
+    //     word,
+    //     { y: [0, y[1]], rotate: [0, rotate[1]] },
+    //     { duration: 2, ease: "easeInOut" }
+    //   ).then(() => {
+    //     animate(
+    //       word,
+    //       { y },
+    //       {
+    //         duration: 2,
+    //         ease: "easeIn",
+    //         repeat: Infinity,
+    //         repeatType: "mirror",
+    //       }
+    //     );
+    //   });
+    // }
 
     // Remove the new character after the animation
     // setTimeout(() => textSpan.remove(), 5000);
