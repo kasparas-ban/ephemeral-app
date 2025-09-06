@@ -3,9 +3,8 @@
 import { FormEvent, RefObject, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { atom, useAtom } from "jotai";
-import styles from "./styles.module.css";
 import { useAnimate } from "motion/react";
-import { randomInt } from "crypto";
+import styles from "./styles.module.css";
 
 const isCaretPlaying = atom(true);
 const shownText = atom<{ char: string | null }>({ char: null });
@@ -67,7 +66,7 @@ function Caret() {
   return (
     <div
       className={cn(
-        "w-0.5 border-r-2 bg-gray-600 h-full",
+        "w-0.5 border-r-2 bg-gray-600 h-full border-none",
         isPlaying && styles["caret"]
       )}
     />
@@ -87,33 +86,50 @@ function FloatingText({
   useEffect(() => {
     if (!text.char) return;
 
-    const spans = textRef.current?.querySelectorAll("span");
-    const lastWordIdx = parseInt(
-      Array.from(spans ?? [])
-        .at(-1)
-        ?.getAttribute("data-word-idx") ?? "0"
+    const charSpans = textRef.current?.querySelectorAll(
+      'span[data-kind="char"]'
     );
-    const isNewWord = text.char === "\u00A0";
-    const currentWordIdx = isNewWord ? lastWordIdx + 1 : lastWordIdx;
 
-    spans?.forEach((span, idx) => {
+    charSpans?.forEach((span, idx) => {
       animate(
         span,
-        { x: -CHAR_WIDTH * (spans.length - idx + 1) },
+        { x: -CHAR_WIDTH * (charSpans.length - idx + 1) },
         { duration: 0.1, ease: "easeOut" }
       );
     });
 
     // Create a new span for the new character
-    const textSpan = document.createElement("span");
-    textSpan.className = "inline-block absolute";
-    textSpan.textContent = text.char ?? "";
-    textSpan.setAttribute("data-word-idx", `${currentWordIdx}`);
-    textRef.current?.append(textSpan);
+    const charSpan = document.createElement("span");
+    charSpan.className = "inline-block absolute";
+    charSpan.textContent = text.char ?? "";
+    const isWhitespace = /\s/.test(text.char);
+    charSpan.setAttribute("data-kind", "char");
+
+    // Append to a word wrapper when the char is not whitespace.
+    // For whitespace, append directly to the container and start a new word next time.
+    const container = textRef.current;
+    if (!container) return;
+
+    if (isWhitespace) {
+      container.append(charSpan);
+    } else {
+      const last = container.lastElementChild as HTMLElement | null;
+      let wordWrapper: HTMLElement | null =
+        last && last.getAttribute("data-kind") === "word" ? last : null;
+
+      if (!wordWrapper) {
+        wordWrapper = document.createElement("span");
+        wordWrapper.className = "inline-block absolute";
+        wordWrapper.setAttribute("data-kind", "word");
+        container.append(wordWrapper);
+      }
+
+      wordWrapper.append(charSpan);
+    }
 
     // Animate the new character
     animate(
-      textSpan,
+      charSpan,
       { x: ["-50%", "-100%"], opacity: [0, 1] },
       { duration: 0.1, ease: "easeOut" }
     );
@@ -121,15 +137,15 @@ function FloatingText({
     const y = [randomFloat(-1.5, 1.5), randomFloat(-1.5, 1.5)];
     const rotate = [randomFloat(-2, 2), randomFloat(-2, 2)];
 
-    // Animate the to the initial floating position
+    // Animate char to the initial floating position
     animate(
-      textSpan,
+      charSpan,
       { y: [0, y[0]], rotate: [0, rotate[0]] },
       { duration: 2, ease: "easeInOut" }
     ).then(() => {
-      // Animate the floating
+      // Animate floating char
       animate(
-        textSpan,
+        charSpan,
         { y, rotate },
         {
           duration: 2,
@@ -140,31 +156,28 @@ function FloatingText({
       );
     });
 
-    // if (isNewWord) {
-    //   const word = textRef.current?.querySelector(
-    //     `[data-word-idx="${lastWordIdx}"]`
-    //   );
-    //   if (!word) return;
+    // Animate last word
+    const lastWord = container.children[container.children.length - 2];
+    if (lastWord && lastWord.getAttribute("data-kind") === "word") {
+      const y = [randomFloat(-3, 3), randomFloat(-3, 3)];
 
-    //   const y = [randomFloat(-30, 30), randomFloat(-30, 30)];
-
-    //   animate(
-    //     word,
-    //     { y: [0, y[1]], rotate: [0, rotate[1]] },
-    //     { duration: 2, ease: "easeInOut" }
-    //   ).then(() => {
-    //     animate(
-    //       word,
-    //       { y },
-    //       {
-    //         duration: 2,
-    //         ease: "easeIn",
-    //         repeat: Infinity,
-    //         repeatType: "mirror",
-    //       }
-    //     );
-    //   });
-    // }
+      animate(
+        lastWord,
+        { y: [0, y[0]] },
+        { duration: 2, ease: "easeInOut" }
+      ).then(() => {
+        animate(
+          lastWord,
+          { y },
+          {
+            duration: 2,
+            ease: "easeIn",
+            repeat: Infinity,
+            repeatType: "mirror",
+          }
+        );
+      });
+    }
 
     // Remove the new character after the animation
     // setTimeout(() => textSpan.remove(), 5000);
