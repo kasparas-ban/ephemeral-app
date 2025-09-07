@@ -2,28 +2,28 @@
 
 import { FormEvent, RefObject, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
-import { atom, useAtom } from "jotai";
+import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useAnimate } from "motion/react";
 import styles from "./styles.module.css";
 
-const isCaretPlaying = atom(true);
-const shownText = atom<{ char: string | null }>({ char: null });
+const isCaretPlayingAtom = atom(true);
+const lastCharAtom = atom<{ val: string | null }>({ val: null });
 
 export default function EphemeralBlock() {
   const editableRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
 
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [, setIsPlaying] = useAtom(isCaretPlaying);
+  const setIsPlaying = useSetAtom(isCaretPlayingAtom);
 
-  const [, setText] = useAtom(shownText);
+  const setText = useSetAtom(lastCharAtom);
 
   const handleInput = (e: FormEvent<HTMLDivElement>) => {
     // Skip if deletion
     if ((e.nativeEvent as InputEvent).data === null) return;
     if (!textRef.current || !editableRef.current) return;
 
-    setText({ char: editableRef.current.innerText.at(-1) ?? null });
+    setText({ val: editableRef.current.innerText.at(-1) ?? null });
 
     setIsPlaying(false);
     timeoutRef.current && clearTimeout(timeoutRef.current);
@@ -61,7 +61,7 @@ export default function EphemeralBlock() {
 }
 
 function Caret() {
-  const [isPlaying] = useAtom(isCaretPlaying);
+  const isPlaying = useAtomValue(isCaretPlayingAtom);
 
   return (
     <div
@@ -74,17 +74,18 @@ function Caret() {
 }
 
 const CHAR_WIDTH = 12.24; // px
+const SENTENCE_WIDTH = 12.24 * 80; // px, approx 80 chars
 
 function FloatingText({
   textRef,
 }: {
   textRef: RefObject<HTMLDivElement | null>;
 }) {
-  const [text] = useAtom(shownText);
+  const lastChar = useAtomValue(lastCharAtom);
   const [scope, animate] = useAnimate<HTMLDivElement>();
 
   useEffect(() => {
-    if (!text.char) return;
+    if (!lastChar) return;
 
     const charSpans = textRef.current?.querySelectorAll(
       'span[data-kind="char"]'
@@ -101,8 +102,8 @@ function FloatingText({
     // Create a new span for the new character
     const charSpan = document.createElement("span");
     charSpan.className = "inline-block absolute";
-    charSpan.textContent = text.char ?? "";
-    const isWhitespace = /\s/.test(text.char);
+    charSpan.textContent = lastChar.val ?? "";
+    const isWhitespace = lastChar.val ? /\s/.test(lastChar.val) : false;
     charSpan.setAttribute("data-kind", "char");
 
     // Append to a word wrapper when the char is not whitespace.
@@ -181,7 +182,7 @@ function FloatingText({
 
     // Remove the new character after the animation
     // setTimeout(() => textSpan.remove(), 5000);
-  }, [text]);
+  }, [lastChar]);
 
   return (
     <div
