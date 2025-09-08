@@ -1,3 +1,4 @@
+import { AnimatedTextarea } from "@/components/custom/animated-textarea";
 import EphemeralBlock from "@/components/ephemeral/ephemeral-block-updated";
 import EphemeralParagraph from "@/components/ephemeral/ephemeral-paragraph";
 
@@ -6,7 +7,8 @@ export default function Test() {
     <div className="font-sans">
       <main className="flex items-center justify-center h-screen p-4">
         {/* <EphemeralParagraph /> */}
-        <EphemeralBlock />
+        {/* <EphemeralBlock /> */}
+        {/* <AnimatedTextarea /> */}
       </main>
     </div>
   );

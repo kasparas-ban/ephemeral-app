@@ -84,29 +84,51 @@ function FloatingText({
 }) {
   const lastChar = useAtomValue(lastCharAtom);
   const [scope, animate] = useAnimate<HTMLDivElement>();
-  const [currentLine, setCurrentLine] = useAtom(currentLineAtom);
+  const currentLine = useRef(0);
 
   useEffect(() => {
     if (!lastChar) return;
 
-    const charSpans = textRef.current?.querySelectorAll(
-      'span[data-kind="char"]'
+    const lineChars = textRef.current?.querySelectorAll(
+      `span[data-line="${currentLine.current}"]`
     );
 
-    charSpans?.forEach((span, idx) => {
+    lineChars?.forEach((span, idx) => {
       animate(
         span,
-        { x: -CHAR_WIDTH * (charSpans.length - idx + 1) },
+        { x: -CHAR_WIDTH * (lineChars.length - idx + 1) },
         { duration: 0.1, ease: "easeOut" }
       );
     });
 
+    const isNewLine = lineChars ? lineChars.length > LINE_CHAR_LIMIT : false;
+    const isWhitespace = lastChar.val ? /\s/.test(lastChar.val) : false;
+
+    if (isNewLine && isWhitespace) {
+      currentLine.current += 1;
+
+      // Move all chars in previous lines up
+      for (let line = 0; line < currentLine.current; line++) {
+        const lineChars = textRef.current?.querySelectorAll(
+          `span[data-line="${line}"]`
+        );
+
+        lineChars?.forEach((span) => {
+          animate(
+            span,
+            { y: -30 * (currentLine.current - line) },
+            { duration: 0.25, ease: "easeOut" }
+          );
+        });
+      }
+    }
+
     // Create a new span for the new character
     const charSpan = document.createElement("span");
-    charSpan.className = "inline-block absolute";
+    charSpan.className = "block absolute will-change-transform";
     charSpan.textContent = lastChar.val ?? "";
-    const isWhitespace = lastChar.val ? /\s/.test(lastChar.val) : false;
     charSpan.setAttribute("data-kind", "char");
+    charSpan.setAttribute("data-line", currentLine.current.toString());
 
     // Append to a word wrapper when the char is not whitespace.
     // For whitespace, append directly to the container and start a new word next time.
@@ -122,7 +144,7 @@ function FloatingText({
 
       if (!wordWrapper) {
         wordWrapper = document.createElement("span");
-        wordWrapper.className = "inline-block absolute";
+        wordWrapper.className = "block absolute will-change-transform";
         wordWrapper.setAttribute("data-kind", "word");
         container.append(wordWrapper);
       }
