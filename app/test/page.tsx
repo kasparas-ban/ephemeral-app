@@ -1,4 +1,3 @@
-import { AnimatedTextarea } from "@/components/custom/animated-textarea";
 import EphemeralBlock from "@/components/ephemeral/ephemeral-block-updated";
 import EphemeralParagraph from "@/components/ephemeral/ephemeral-paragraph";
 

@@ -90,37 +90,53 @@ function FloatingText({
     if (!lastChar) return;
 
     const lineChars = textRef.current?.querySelectorAll(
-      `span[data-line="${currentLine.current}"]`
+      `span[data-char-line="${currentLine.current}"]`
     );
-
-    lineChars?.forEach((span, idx) => {
-      animate(
-        span,
-        { x: -CHAR_WIDTH * (lineChars.length - idx + 1) },
-        { duration: 0.1, ease: "easeOut" }
-      );
-    });
 
     const isNewLine = lineChars ? lineChars.length > LINE_CHAR_LIMIT : false;
     const isWhitespace = lastChar.val ? /\s/.test(lastChar.val) : false;
 
-    if (isNewLine && isWhitespace) {
-      currentLine.current += 1;
+    if (!(isNewLine && isWhitespace)) {
+      lineChars?.forEach((span, idx) => {
+        animate(
+          span,
+          { x: -CHAR_WIDTH * (lineChars.length - idx + 1) },
+          { duration: 0.1, ease: "easeOut" }
+        );
+      });
+    }
 
-      // Move all chars in previous lines up
-      for (let line = 0; line < currentLine.current; line++) {
-        const lineChars = textRef.current?.querySelectorAll(
+    if (isNewLine && isWhitespace) {
+      // Create new line
+      const lineWords = textRef.current?.querySelectorAll(
+        `span[data-word-line="${currentLine.current}"]`
+      );
+      const lineSpan = document.createElement("span");
+      lineSpan.className = "block absolute will-change-transform";
+      lineSpan.setAttribute("data-line", currentLine.current.toString());
+      lineSpan.append(...(lineWords ? Array.from(lineWords) : []));
+      textRef.current?.append(lineSpan);
+
+      // Move all words in previous lines up
+      for (let line = 0; line <= currentLine.current; line++) {
+        const lineSpan = textRef.current?.querySelector(
           `span[data-line="${line}"]`
         );
 
-        lineChars?.forEach((span) => {
-          animate(
-            span,
-            { y: -30 * (currentLine.current - line) },
-            { duration: 0.25, ease: "easeOut" }
-          );
-        });
+        console.log("found line span", lineSpan);
+
+        if (!lineSpan) continue;
+
+        console.log("animating to ", -30 * (currentLine.current - line));
+
+        animate(
+          lineSpan,
+          { y: -30 * (currentLine.current - line + 1) },
+          { duration: 0.25, ease: "easeOut" }
+        );
       }
+
+      currentLine.current += 1;
     }
 
     // Create a new span for the new character
@@ -128,7 +144,7 @@ function FloatingText({
     charSpan.className = "block absolute will-change-transform";
     charSpan.textContent = lastChar.val ?? "";
     charSpan.setAttribute("data-kind", "char");
-    charSpan.setAttribute("data-line", currentLine.current.toString());
+    charSpan.setAttribute("data-char-line", currentLine.current.toString());
 
     // Append to a word wrapper when the char is not whitespace.
     // For whitespace, append directly to the container and start a new word next time.
@@ -136,7 +152,7 @@ function FloatingText({
     if (!container) return;
 
     if (isWhitespace) {
-      container.append(charSpan);
+      if (!isNewLine) container.append(charSpan);
     } else {
       const last = container.lastElementChild as HTMLElement | null;
       let wordWrapper: HTMLElement | null =
@@ -146,40 +162,46 @@ function FloatingText({
         wordWrapper = document.createElement("span");
         wordWrapper.className = "block absolute will-change-transform";
         wordWrapper.setAttribute("data-kind", "word");
+        wordWrapper.setAttribute(
+          "data-word-line",
+          currentLine.current.toString()
+        );
         container.append(wordWrapper);
       }
 
       wordWrapper.append(charSpan);
     }
 
-    // Animate the new character
-    animate(
-      charSpan,
-      { x: ["-50%", "-100%"], opacity: [0, 1] },
-      { duration: 0.1, ease: "easeOut" }
-    );
-
-    const y = [randomFloat(-1.5, 1.5), randomFloat(-1.5, 1.5)];
-    const rotate = [randomFloat(-2, 2), randomFloat(-2, 2)];
-
-    // Animate char to the initial floating position
-    animate(
-      charSpan,
-      { y: [0, y[0]], rotate: [0, rotate[0]] },
-      { duration: 2, ease: "easeInOut" }
-    ).then(() => {
-      // Animate floating char
+    if (!isWhitespace) {
+      // Animate the new character
       animate(
         charSpan,
-        { y, rotate },
-        {
-          duration: 2,
-          ease: "easeIn",
-          repeat: Infinity,
-          repeatType: "mirror",
-        }
+        { x: ["-50%", "-100%"], opacity: [0, 1] },
+        { duration: 0.1, ease: "easeOut" }
       );
-    });
+
+      const y = [randomFloat(-1, 1), randomFloat(-1, 1)];
+      const rotate = [randomFloat(-2, 2), randomFloat(-2, 2)];
+
+      // Animate char to the initial floating position
+      animate(
+        charSpan,
+        { y: [0, y[0]], rotate: [0, rotate[0]] },
+        { duration: 2, ease: "easeInOut" }
+      ).then(() => {
+        // Animate floating char
+        animate(
+          charSpan,
+          { y, rotate },
+          {
+            duration: 2,
+            ease: "easeIn",
+            repeat: Infinity,
+            repeatType: "mirror",
+          }
+        );
+      });
+    }
 
     // Animate last word
     const lastWord = container.children[container.children.length - 2];
