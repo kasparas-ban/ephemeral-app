@@ -2,19 +2,18 @@
 
 import { FormEvent, RefObject, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { atom, useAtomValue, useSetAtom } from "jotai";
 import { useAnimate } from "motion/react";
 import styles from "./styles.module.css";
 
 const isCaretPlayingAtom = atom(true);
 const lastCharAtom = atom<{ val: string | null }>({ val: null });
-const currentLineAtom = atom(0);
 
 export default function EphemeralBlock() {
   const editableRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
 
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const carretAnimTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const setIsPlaying = useSetAtom(isCaretPlayingAtom);
 
   const setText = useSetAtom(lastCharAtom);
@@ -27,8 +26,8 @@ export default function EphemeralBlock() {
     setText({ val: editableRef.current.innerText.at(-1) ?? null });
 
     setIsPlaying(false);
-    timeoutRef.current && clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => setIsPlaying(true), 100);
+    carretAnimTimeoutRef.current && clearTimeout(carretAnimTimeoutRef.current);
+    carretAnimTimeoutRef.current = setTimeout(() => setIsPlaying(true), 100);
   };
 
   useEffect(() => {
@@ -49,7 +48,7 @@ export default function EphemeralBlock() {
         ref={editableRef}
         contentEditable
         role="textbox"
-        aria-label="Ephemeral input"
+        aria-label="Invisible input"
         spellCheck={false}
         onBlur={() => editableRef.current?.focus()}
         onInput={handleInput}
@@ -96,16 +95,6 @@ function FloatingText({
     const isNewLine = lineChars ? lineChars.length > LINE_CHAR_LIMIT : false;
     const isWhitespace = lastChar.val ? /\s/.test(lastChar.val) : false;
 
-    if (!(isNewLine && isWhitespace)) {
-      lineChars?.forEach((span, idx) => {
-        animate(
-          span,
-          { x: -CHAR_WIDTH * (lineChars.length - idx + 1) },
-          { duration: 0.1, ease: "easeOut" }
-        );
-      });
-    }
-
     if (isNewLine && isWhitespace) {
       // Create new line
       const lineWords = textRef.current?.querySelectorAll(
@@ -123,11 +112,7 @@ function FloatingText({
           `span[data-line="${line}"]`
         );
 
-        console.log("found line span", lineSpan);
-
         if (!lineSpan) continue;
-
-        console.log("animating to ", -30 * (currentLine.current - line));
 
         animate(
           lineSpan,
@@ -137,6 +122,15 @@ function FloatingText({
       }
 
       currentLine.current += 1;
+    } else {
+      // Animate existing line characters
+      lineChars?.forEach((span, idx) => {
+        animate(
+          span,
+          { x: -CHAR_WIDTH * (lineChars.length - idx + 1) },
+          { duration: 0.1, ease: "easeOut" }
+        );
+      });
     }
 
     // Create a new span for the new character
@@ -153,6 +147,29 @@ function FloatingText({
 
     if (isWhitespace) {
       if (!isNewLine) container.append(charSpan);
+
+      // Animate last word
+      const lastWord = container.children[container.children.length - 2];
+      if (lastWord && lastWord.getAttribute("data-kind") === "word") {
+        const y = [randomFloat(-3, 3), randomFloat(-3, 3)];
+
+        animate(
+          lastWord,
+          { y: [0, y[0]] },
+          { duration: 2, ease: "easeInOut" }
+        ).then(() => {
+          animate(
+            lastWord,
+            { y },
+            {
+              duration: 2,
+              ease: "easeIn",
+              repeat: Infinity,
+              repeatType: "mirror",
+            }
+          );
+        });
+      }
     } else {
       const last = container.lastElementChild as HTMLElement | null;
       let wordWrapper: HTMLElement | null =
@@ -170,9 +187,7 @@ function FloatingText({
       }
 
       wordWrapper.append(charSpan);
-    }
 
-    if (!isWhitespace) {
       // Animate the new character
       animate(
         charSpan,
@@ -193,29 +208,6 @@ function FloatingText({
         animate(
           charSpan,
           { y, rotate },
-          {
-            duration: 2,
-            ease: "easeIn",
-            repeat: Infinity,
-            repeatType: "mirror",
-          }
-        );
-      });
-    }
-
-    // Animate last word
-    const lastWord = container.children[container.children.length - 2];
-    if (lastWord && lastWord.getAttribute("data-kind") === "word") {
-      const y = [randomFloat(-3, 3), randomFloat(-3, 3)];
-
-      animate(
-        lastWord,
-        { y: [0, y[0]] },
-        { duration: 2, ease: "easeInOut" }
-      ).then(() => {
-        animate(
-          lastWord,
-          { y },
           {
             duration: 2,
             ease: "easeIn",

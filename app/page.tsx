@@ -1,5 +1,6 @@
 import Ephemeral from "@/components/ephemeral/ephemeral";
 import EphemeralBlock from "@/components/ephemeral/ephemeral-block-updated";
+import EphemeralClass from "@/components/ephemeral/ephemeral-class";
 import EphemeralWiggly from "@/components/ephemeral/ephemeral-wiggly";
 import WiggleLine from "@/components/ephemeral/wiggly-line";
 
@@ -10,7 +11,8 @@ export default function Home() {
         {/* <Ephemeral /> */}
         {/* <WiggleLine /> */}
         {/* <EphemeralWiggly /> */}
-        <EphemeralBlock />
+        {/* <EphemeralBlock /> */}
+        <EphemeralClass />
       </main>
     </div>
   );

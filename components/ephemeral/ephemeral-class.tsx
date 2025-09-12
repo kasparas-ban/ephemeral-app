@@ -2,32 +2,32 @@
 
 import { FormEvent, RefObject, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
-import { atom, useAtom } from "jotai";
-import AnimatedText from "./animated-text";
+import { atom, useAtomValue, useSetAtom } from "jotai";
 import styles from "./styles.module.css";
+import AnimatedText from "./animated-text";
 
-const isCaretPlaying = atom(true);
-const shownText = atom<{ char: string | null }>({ char: null });
+const isCaretPlayingAtom = atom(true);
+const lastCharAtom = atom<{ val: string | null }>({ val: null });
 
-export default function Ephemeral() {
+export default function EphemeralClass() {
   const editableRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
 
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [, setIsPlaying] = useAtom(isCaretPlaying);
+  const carretAnimTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const setIsPlaying = useSetAtom(isCaretPlayingAtom);
 
-  const [, setText] = useAtom(shownText);
+  const setText = useSetAtom(lastCharAtom);
 
   const handleInput = (e: FormEvent<HTMLDivElement>) => {
     // Skip if deletion
     if ((e.nativeEvent as InputEvent).data === null) return;
     if (!textRef.current || !editableRef.current) return;
 
-    setText({ char: editableRef.current.innerText.at(-1) ?? null });
+    setText({ val: editableRef.current.innerText.at(-1) ?? null });
 
     setIsPlaying(false);
-    timeoutRef.current && clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => setIsPlaying(true), 100);
+    carretAnimTimeoutRef.current && clearTimeout(carretAnimTimeoutRef.current);
+    carretAnimTimeoutRef.current = setTimeout(() => setIsPlaying(true), 100);
   };
 
   useEffect(() => {
@@ -48,7 +48,7 @@ export default function Ephemeral() {
         ref={editableRef}
         contentEditable
         role="textbox"
-        aria-label="Ephemeral input"
+        aria-label="Invisible input"
         spellCheck={false}
         onBlur={() => editableRef.current?.focus()}
         onInput={handleInput}
@@ -61,46 +61,66 @@ export default function Ephemeral() {
 }
 
 function Caret() {
-  const [isPlaying] = useAtom(isCaretPlaying);
+  const isPlaying = useAtomValue(isCaretPlayingAtom);
 
   return (
     <div
       className={cn(
-        "w-0.5 border-r-2 bg-gray-600 h-full",
+        "w-0.5 border-r-2 bg-gray-600 h-full border-none",
         isPlaying && styles["caret"]
       )}
     />
   );
 }
 
+const CHAR_WIDTH = 12.24; // px
+const LINE_CHAR_LIMIT = 15;
+
 function FloatingText({
   textRef,
 }: {
   textRef: RefObject<HTMLDivElement | null>;
 }) {
-  const [text] = useAtom(shownText);
+  const lastChar = useAtomValue(lastCharAtom);
   const animatorRef = useRef<AnimatedText | null>(null);
 
-  // Initialize animator when container mounts
+  // Initialize AnimatedText on mount and when ref node changes
   useEffect(() => {
     if (!textRef.current) return;
-    animatorRef.current = new AnimatedText(textRef.current);
+    animatorRef.current = new AnimatedText(textRef.current, {
+      charWidth: CHAR_WIDTH,
+      lineCharLimit: LINE_CHAR_LIMIT,
+      lineStepY: 30,
+      charShiftDuration: 100,
+      charShiftEase: "ease-out",
+      lineMoveDuration: 250,
+      lineMoveEase: "ease-out",
+      charIntroDuration: 100,
+      charIntroEase: "ease-out",
+      floatInitDuration: 2000,
+      floatInitEase: "ease-in-out",
+      floatLoopDuration: 3000,
+      floatLoopEase: "ease-in",
+    });
 
     return () => {
       animatorRef.current?.clear();
       animatorRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [textRef.current]);
 
-  // Add char on new text
+  // Send the new character to the animator
   useEffect(() => {
-    if (!text.char) return;
-    animatorRef.current?.addChar(text.char);
-  }, [text]);
+    if (!lastChar) return;
+    animatorRef.current?.addChar(lastChar.val);
+  }, [lastChar]);
 
   return (
     <div
-      ref={textRef}
+      ref={(node) => {
+        textRef.current = node;
+      }}
       className="absolute pointer-events-none right-[3px] whitespace-nowrap"
     />
   );
