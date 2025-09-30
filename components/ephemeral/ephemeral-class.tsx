@@ -1,10 +1,10 @@
 "use client";
 
 import { FormEvent, RefObject, useEffect, useRef } from "react";
-import { cn } from "@/lib/utils";
 import { atom, useAtomValue, useSetAtom } from "jotai";
-import styles from "./styles.module.css";
+import { cn } from "@/lib/utils";
 import AnimatedText from "./animated-text";
+import styles from "./styles.module.css";
 
 const isCaretPlayingAtom = atom(true);
 const lastCharAtom = atom<{ val: string | null }>({ val: null });
@@ -92,15 +92,10 @@ function FloatingText({
       lineCharLimit: LINE_CHAR_LIMIT,
       lineStepY: 30,
       charShiftDuration: 100,
-      charShiftEase: "ease-out",
       lineMoveDuration: 250,
-      lineMoveEase: "ease-out",
       charIntroDuration: 100,
-      charIntroEase: "ease-out",
       floatInitDuration: 2000,
-      floatInitEase: "ease-in-out",
       floatLoopDuration: 3000,
-      floatLoopEase: "ease-in",
     });
 
     return () => {

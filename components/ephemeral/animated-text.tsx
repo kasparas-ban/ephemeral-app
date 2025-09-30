@@ -1,30 +1,20 @@
 export type AnimatedTextOptions = {
-  // Layout/logic options to mirror FloatingText behavior
   charWidth?: number; // px
   lineCharLimit?: number; // characters per line before wrapping on whitespace
   lineStepY?: number; // px to move previous lines up when a new line is created
 
   // Timings/easings
   charShiftDuration?: number; // ms
-  charShiftEase?: string;
-
   lineMoveDuration?: number; // ms
-  lineMoveEase?: string;
-
   charIntroDuration?: number; // ms
-  charIntroEase?: string;
-
   floatInitDuration?: number; // ms
-  floatInitEase?: string;
-
   floatLoopDuration?: number; // ms
-  floatLoopEase?: string;
 };
 
-/**
- * AnimatedText encapsulates floating text character creation and animation using WAAPI only.
- * Mirrors the advanced FloatingText logic from ephemeral-block-updated.tsx.
- */
+const DEFAULT_CHAR_WIDTH = 12.24;
+const DEFAULT_LINE_CHAR_LIMIT = 15;
+const DEFAULT_LINE_STEP_Y = 30;
+
 export default class AnimatedText {
   private container: HTMLElement;
   private options: Required<AnimatedTextOptions>;
@@ -34,26 +24,17 @@ export default class AnimatedText {
     this.container = container;
     this.options = {
       // Layout/logic defaults
-      charWidth: options?.charWidth ?? 12.24,
-      lineCharLimit: options?.lineCharLimit ?? 15,
-      lineStepY: options?.lineStepY ?? 30,
+      charWidth: options?.charWidth ?? DEFAULT_CHAR_WIDTH,
+      lineCharLimit: options?.lineCharLimit ?? DEFAULT_LINE_CHAR_LIMIT,
+      lineStepY: options?.lineStepY ?? DEFAULT_LINE_STEP_Y,
 
       // Animation defaults (milliseconds)
       charShiftDuration: options?.charShiftDuration ?? 100,
-      charShiftEase: options?.charShiftEase ?? "ease-out",
-
       lineMoveDuration: options?.lineMoveDuration ?? 200,
-      lineMoveEase: options?.lineMoveEase ?? "ease-out",
-
       charIntroDuration: options?.charIntroDuration ?? 100,
-      charIntroEase: options?.charIntroEase ?? "ease-out",
-
       floatInitDuration: options?.floatInitDuration ?? 2000,
-      floatInitEase: options?.floatInitEase ?? "ease-in-out",
-
       floatLoopDuration: options?.floatLoopDuration ?? 2000,
-      floatLoopEase: options?.floatLoopEase ?? "ease-in",
-    } as Required<AnimatedTextOptions>;
+    };
   }
 
   /** Add and animate a single character. */
@@ -67,7 +48,7 @@ export default class AnimatedText {
     );
 
     const isNewLine = lineChars
-      ? lineChars.length > (this.options.lineCharLimit ?? 15)
+      ? lineChars.length > this.options.lineCharLimit
       : false;
 
     if (isNewLine && isWhitespace) {
@@ -126,7 +107,7 @@ export default class AnimatedText {
         ],
         {
           duration: this.options.charIntroDuration,
-          easing: this.options.charIntroEase,
+          easing: "ease-out",
           fill: "forwards",
         }
       );
@@ -145,7 +126,7 @@ export default class AnimatedText {
           ],
           {
             duration: this.options.floatInitDuration,
-            easing: this.options.floatInitEase,
+            easing: "ease-in-out",
             fill: "forwards",
           }
         );
@@ -166,10 +147,9 @@ export default class AnimatedText {
             ],
             {
               duration: this.options.floatLoopDuration,
-              easing: this.options.floatLoopEase,
+              easing: "ease-in-out",
               direction: "alternate",
               iterations: Infinity,
-              fill: "both",
             }
           );
         });
@@ -227,7 +207,7 @@ export default class AnimatedText {
         ],
         {
           duration: this.options.lineMoveDuration,
-          easing: this.options.lineMoveEase,
+          easing: "ease-out",
           fill: "forwards",
         }
       );
@@ -251,7 +231,7 @@ export default class AnimatedText {
       [{ transform: `translateY(0px)` }, { transform: `translateY(${y0}px)` }],
       {
         duration: this.options.floatInitDuration,
-        easing: this.options.floatInitEase,
+        easing: "ease-in-out",
         fill: "forwards",
       }
     );
@@ -266,7 +246,7 @@ export default class AnimatedText {
       ],
       {
         duration: this.options.floatLoopDuration,
-        easing: this.options.floatLoopEase,
+        easing: "ease-in-out",
         direction: "alternate",
         iterations: Infinity,
         fill: "both",
@@ -284,7 +264,7 @@ export default class AnimatedText {
       ],
       {
         duration: this.options.charShiftDuration,
-        easing: this.options.charShiftEase,
+        easing: "ease-out",
         fill: "forwards",
       }
     );
