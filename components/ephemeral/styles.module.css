@@ -2,6 +2,13 @@
   animation: blink 1.1s step-start infinite;
 }
 
+/* When typing: force visible with fade. We pause the blink animation and transition opacity */
+.caretTyping {
+  animation: none !important;
+  opacity: 1 !important;
+  transition: opacity 80ms ease-in;
+}
+
 @keyframes blink {
   0% {
     opacity: 1;

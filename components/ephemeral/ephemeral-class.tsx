@@ -10,6 +10,7 @@ const text = atom("");
 
 const CHAR_WIDTH = 12.24; // px
 const LINE_CHAR_LIMIT = 15;
+const CARET_IDLE_DELAY = 100; // ms to wait after last input before blinking resumes
 
 export default function EphemeralClass() {
   const editableRef = useRef<HTMLDivElement>(null);
@@ -21,21 +22,19 @@ export default function EphemeralClass() {
 
   const setText = useSetAtom(text);
 
-  const pauseCaretAnimation = () => {
+  const showCaretWhileTyping = () => {
     if (!caretRef.current) return;
 
-    caretRef.current.style.animationPlayState = "paused";
-    caretRef.current.style.opacity = "1";
+    caretRef.current.classList.add(styles.caretTyping);
 
     if (caretAnimationTimeoutRef.current) {
       clearTimeout(caretAnimationTimeoutRef.current);
     }
 
     caretAnimationTimeoutRef.current = setTimeout(() => {
-      if (caretRef.current) {
-        caretRef.current.style.animationPlayState = "running";
-      }
-    }, 100);
+      if (!caretRef.current) return;
+      caretRef.current.classList.remove(styles.caretTyping);
+    }, CARET_IDLE_DELAY);
   };
 
   const handleInput = (e: FormEvent<HTMLDivElement>) => {
@@ -46,8 +45,7 @@ export default function EphemeralClass() {
 
     if (inputEvent.inputType === "deleteContentBackward") {
       animatorRef.current.deleteChar();
-
-      pauseCaretAnimation();
+      showCaretWhileTyping();
       return;
     }
 
@@ -56,7 +54,7 @@ export default function EphemeralClass() {
     setText((prev) => prev + char);
     animatorRef.current.addChar(char);
 
-    pauseCaretAnimation();
+    showCaretWhileTyping();
   };
 
   useEffect(() => {
@@ -90,6 +88,7 @@ export default function EphemeralClass() {
       {/* Custom caret */}
       <div className="pointer-events-none h-auto">
         <div
+          ref={caretRef}
           className={cn(
             "w-0.5 border-r-2 bg-gray-600 h-full border-none",
             styles["caret"]
