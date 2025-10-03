@@ -1,3 +1,7 @@
+const LINE_MOVE_EASING = "cubic-bezier(0.22, 1, 0.36, 1)";
+const CHAR_SHIFT_EASING = "ease-out";
+const CHAR_INTRO_EASING = "ease-out";
+
 export type AnimatedTextOptions = {
   charWidth?: number; // px
   lineCharLimit?: number; // characters per line before wrapping on whitespace
@@ -31,7 +35,7 @@ export default class AnimatedText {
 
       // Animation defaults (milliseconds)
       charShiftDuration: options?.charShiftDuration ?? 100,
-      lineMoveDuration: options?.lineMoveDuration ?? 200,
+      lineMoveDuration: options?.lineMoveDuration ?? 160,
       charIntroDuration: options?.charIntroDuration ?? 100,
       floatInitDuration: options?.floatInitDuration ?? 2000,
       floatLoopDuration: options?.floatLoopDuration ?? 2000,
@@ -128,7 +132,7 @@ export default class AnimatedText {
       ],
       {
         duration: this.options.charShiftDuration,
-        easing: "ease-out",
+        easing: CHAR_SHIFT_EASING,
         fill: "forwards",
       }
     );
@@ -146,7 +150,7 @@ export default class AnimatedText {
       ],
       {
         duration: this.options.lineMoveDuration,
-        easing: "ease-out",
+        easing: LINE_MOVE_EASING,
         fill: "forwards",
       }
     );
@@ -162,7 +166,7 @@ export default class AnimatedText {
       ],
       {
         duration: this.options.charIntroDuration,
-        easing: "ease-out",
+        easing: CHAR_INTRO_EASING,
         fill: "forwards",
       }
     );
