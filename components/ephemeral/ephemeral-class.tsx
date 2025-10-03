@@ -3,7 +3,7 @@
 import { FormEvent, RefObject, useEffect, useRef } from "react";
 import { atom, useAtomValue, useSetAtom } from "jotai";
 import { cn } from "@/lib/utils";
-import AnimatedText from "./animated-text";
+import AnimatedText from "./animated-text-new";
 import styles from "./styles.module.css";
 
 const isCaretPlayingAtom = atom(true);
@@ -99,7 +99,7 @@ function FloatingText({
     });
 
     return () => {
-      animatorRef.current?.clear();
+      // animatorRef.current?.clear();
       animatorRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
