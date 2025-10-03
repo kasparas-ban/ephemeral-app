@@ -62,16 +62,33 @@ export default class AnimatedText {
 
     const isNewWord = isWhitespace || this.lastLineCharCount === 0;
 
+    // Identify if this line already has a wrapper (i.e. we moved back to edit a previous line)
+    const existingLineWrapper = this.container.querySelector(
+      `span[data-type="line"][data-line="${this.currentLine}"]`
+    ) as HTMLElement | null;
+
     if (isNewWord) {
       const wordEl = document.createElement("span");
       wordEl.className = "block absolute will-change-transform";
       wordEl.setAttribute("data-type", "word");
       wordEl.setAttribute("data-line", this.currentLine.toString());
-      this.container.append(wordEl);
+      // Append inside existing line wrapper if editing a wrapped line, else directly to container
+      if (existingLineWrapper) {
+        existingLineWrapper.append(wordEl);
+      } else {
+        this.container.append(wordEl);
+      }
     }
 
-    // Append the character span to the current word
-    const lastWord = this.container.lastElementChild as HTMLElement;
+    // Get the last word for this line (inside wrapper if present)
+    let lastWord: HTMLElement | null = null;
+    if (existingLineWrapper) {
+      lastWord = existingLineWrapper.lastElementChild as HTMLElement;
+    } else {
+      lastWord = this.container.lastElementChild as HTMLElement;
+    }
+    if (!lastWord) return;
+
     const charEl = document.createElement("span");
     charEl.textContent = char;
     charEl.className = "block absolute will-change-transform opacity-0";
@@ -83,6 +100,46 @@ export default class AnimatedText {
     lastWord.append(charEl);
     this.animateInitialCharAppearance(charEl);
     this.lastLineCharCount += 1;
+  }
+
+  /** Delete the last character on the current line (or merge lines if empty). */
+  deleteChar() {
+    // If there are characters on the current line, remove the last one
+    if (this.lastLineCharCount > 0) {
+      const chars = Array.from(
+        this.container.querySelectorAll(
+          `span[data-kind="char"][data-char-line="${this.currentLine}"]`
+        )
+      ) as HTMLElement[];
+      if (!chars.length) return;
+      // Last char is the one with the highest (least negative) tx value OR simply the last in DOM order
+      const lastChar = chars[chars.length - 1];
+      lastChar.remove();
+      this.lastLineCharCount -= 1;
+      // Shift remaining chars right
+      this.shiftCurrentLineRight();
+
+      // If line became empty after removal, treat as removing the line itself
+      if (this.lastLineCharCount === 0 && this.currentLine > 0) {
+        this.shiftLinesDown();
+        this.currentLine -= 1;
+        this.lastLineCharCount = this.getLineCharCount(this.currentLine);
+      }
+      return;
+    }
+
+    // No characters on this (empty) line: move back to previous line if exists
+    if (this.lastLineCharCount === 0 && this.currentLine > 0) {
+      this.shiftLinesDown();
+      this.currentLine -= 1;
+      this.lastLineCharCount = this.getLineCharCount(this.currentLine);
+    }
+  }
+
+  private getLineCharCount(line: number) {
+    return this.container.querySelectorAll(
+      `span[data-kind="char"][data-char-line="${line}"]`
+    ).length;
   }
 
   createLine() {
@@ -110,6 +167,16 @@ export default class AnimatedText {
     });
   }
 
+  shiftLinesDown() {
+    const lines = this.container.querySelectorAll(`span[data-type="line"]`);
+
+    lines.forEach((line) => {
+      const outer = line as HTMLElement;
+      const currentY = parseFloat(outer.dataset.ty || "0");
+      this.animateTranslateY(outer, currentY + this.options.lineStepY);
+    });
+  }
+
   shiftCurrentLineLeft() {
     const lineChars = document.querySelectorAll(
       `span[data-char-line="${this.currentLine}"]`
@@ -119,6 +186,19 @@ export default class AnimatedText {
       const outer = char as HTMLElement;
       const currentX = parseFloat(outer.dataset.tx || "0");
       this.animateTranslateX(outer, currentX - this.options.charWidth);
+    });
+  }
+
+  // Shift all chars on current line to the right (used when deleting)
+  private shiftCurrentLineRight() {
+    const lineChars = document.querySelectorAll(
+      `span[data-char-line="${this.currentLine}"]`
+    );
+
+    lineChars.forEach((char) => {
+      const outer = char as HTMLElement;
+      const currentX = parseFloat(outer.dataset.tx || "0");
+      this.animateTranslateX(outer, currentX + this.options.charWidth);
     });
   }
 

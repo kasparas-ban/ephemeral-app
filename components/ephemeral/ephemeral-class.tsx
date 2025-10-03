@@ -1,46 +1,101 @@
 "use client";
 
-import { FormEvent, RefObject, useEffect, useRef } from "react";
-import { atom, useAtomValue, useSetAtom } from "jotai";
-import { cn } from "@/lib/utils";
+import { FormEvent, useEffect, useRef } from "react";
+import { atom, useSetAtom } from "jotai";
 import AnimatedText from "./animated-text-new";
+import { cn } from "@/lib/utils";
 import styles from "./styles.module.css";
 
-const isCaretPlayingAtom = atom(true);
-const lastCharAtom = atom<{ val: string | null }>({ val: null });
+const text = atom("");
+
+const CHAR_WIDTH = 12.24; // px
+const LINE_CHAR_LIMIT = 15;
 
 export default function EphemeralClass() {
   const editableRef = useRef<HTMLDivElement>(null);
-  const textRef = useRef<HTMLDivElement>(null);
+  const textContainerRef = useRef<HTMLDivElement>(null);
+  const animatorRef = useRef<AnimatedText | null>(null);
 
-  const carretAnimTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const setIsPlaying = useSetAtom(isCaretPlayingAtom);
+  const caretRef = useRef<HTMLDivElement>(null);
+  const caretAnimationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const setText = useSetAtom(lastCharAtom);
+  const setText = useSetAtom(text);
+
+  const pauseCaretAnimation = () => {
+    if (!caretRef.current) return;
+
+    caretRef.current.style.animationPlayState = "paused";
+    caretRef.current.style.opacity = "1";
+
+    if (caretAnimationTimeoutRef.current) {
+      clearTimeout(caretAnimationTimeoutRef.current);
+    }
+
+    caretAnimationTimeoutRef.current = setTimeout(() => {
+      if (caretRef.current) {
+        caretRef.current.style.animationPlayState = "running";
+      }
+    }, 100);
+  };
 
   const handleInput = (e: FormEvent<HTMLDivElement>) => {
-    // Skip if deletion
-    if ((e.nativeEvent as InputEvent).data === null) return;
-    if (!textRef.current || !editableRef.current) return;
+    if (!animatorRef.current) return;
 
-    setText({ val: editableRef.current.innerText.at(-1) ?? null });
+    const inputEvent = e.nativeEvent as InputEvent;
+    const char = inputEvent.data;
 
-    setIsPlaying(false);
-    carretAnimTimeoutRef.current && clearTimeout(carretAnimTimeoutRef.current);
-    carretAnimTimeoutRef.current = setTimeout(() => setIsPlaying(true), 100);
+    if (inputEvent.inputType === "deleteContentBackward") {
+      animatorRef.current.deleteChar();
+
+      pauseCaretAnimation();
+      return;
+    }
+
+    if (char === null) return;
+
+    setText((prev) => prev + char);
+    animatorRef.current.addChar(char);
+
+    pauseCaretAnimation();
   };
 
   useEffect(() => {
     editableRef.current?.focus();
+
+    if (!textContainerRef.current) return;
+
+    animatorRef.current = new AnimatedText(textContainerRef.current, {
+      charWidth: CHAR_WIDTH,
+      lineCharLimit: LINE_CHAR_LIMIT,
+      lineStepY: 30,
+      charShiftDuration: 100,
+      lineMoveDuration: 250,
+      charIntroDuration: 100,
+      floatInitDuration: 2000,
+      floatLoopDuration: 3000,
+    });
+
+    return () => {
+      animatorRef.current = null;
+    };
   }, []);
 
   return (
     <div className="relative flex text-xl h-[1lh]">
-      <FloatingText textRef={textRef} />
+      <div
+        ref={textContainerRef}
+        className="absolute pointer-events-none right-[3px] whitespace-nowrap"
+      />
 
       {/* Custom caret */}
       <div className="pointer-events-none h-auto">
-        <Caret />
+        <div
+          className={cn(
+            "w-0.5 border-r-2 bg-gray-600 h-full border-none",
+            styles["caret"]
+          )}
+        />
+        <div className="absolute inset-0 w-8 bg-white left-0.5" />
       </div>
 
       {/* Real editable target: present, focusable, but visually transparent */}
@@ -57,69 +112,5 @@ export default function EphemeralClass() {
                    text-transparent caret-transparent selection:bg-transparent"
       />
     </div>
-  );
-}
-
-function Caret() {
-  const isPlaying = useAtomValue(isCaretPlayingAtom);
-
-  return (
-    <>
-      <div
-        className={cn(
-          "w-0.5 border-r-2 bg-gray-600 h-full border-none",
-          isPlaying && styles["caret"]
-        )}
-      />
-      <div className="absolute inset-0 w-8 bg-white left-0.5" />
-    </>
-  );
-}
-
-const CHAR_WIDTH = 12.24; // px
-const LINE_CHAR_LIMIT = 15;
-
-function FloatingText({
-  textRef,
-}: {
-  textRef: RefObject<HTMLDivElement | null>;
-}) {
-  const lastChar = useAtomValue(lastCharAtom);
-  const animatorRef = useRef<AnimatedText | null>(null);
-
-  // Initialize AnimatedText on mount and when ref node changes
-  useEffect(() => {
-    if (!textRef.current) return;
-    animatorRef.current = new AnimatedText(textRef.current, {
-      charWidth: CHAR_WIDTH,
-      lineCharLimit: LINE_CHAR_LIMIT,
-      lineStepY: 30,
-      charShiftDuration: 100,
-      lineMoveDuration: 250,
-      charIntroDuration: 100,
-      floatInitDuration: 2000,
-      floatLoopDuration: 3000,
-    });
-
-    return () => {
-      // animatorRef.current?.clear();
-      animatorRef.current = null;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [textRef.current]);
-
-  // Send the new character to the animator
-  useEffect(() => {
-    if (!lastChar) return;
-    animatorRef.current?.addChar(lastChar.val);
-  }, [lastChar]);
-
-  return (
-    <div
-      ref={(node) => {
-        textRef.current = node;
-      }}
-      className="absolute pointer-events-none right-[3px] whitespace-nowrap"
-    />
   );
 }
