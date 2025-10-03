@@ -64,12 +64,15 @@ function Caret() {
   const isPlaying = useAtomValue(isCaretPlayingAtom);
 
   return (
-    <div
-      className={cn(
-        "w-0.5 border-r-2 bg-gray-600 h-full border-none",
-        isPlaying && styles["caret"]
-      )}
-    />
+    <>
+      <div
+        className={cn(
+          "w-0.5 border-r-2 bg-gray-600 h-full border-none",
+          isPlaying && styles["caret"]
+        )}
+      />
+      <div className="absolute inset-0 w-8 bg-white left-0.5" />
+    </>
   );
 }
 
