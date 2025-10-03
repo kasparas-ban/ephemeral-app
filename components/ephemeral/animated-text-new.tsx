@@ -54,7 +54,7 @@ export default class AnimatedText {
 
     if (isNewLine) {
       this.createLine();
-      this.shiftLinesUp();
+      this.shiftAllLines("up");
       this.currentLine = this.currentLine + 1;
       this.lastLineCharCount = 0;
       return;
@@ -95,14 +95,13 @@ export default class AnimatedText {
     charEl.setAttribute("data-kind", "char");
     charEl.setAttribute("data-char-line", this.currentLine.toString());
 
-    this.shiftCurrentLineLeft();
+    this.shiftCurrentLine("left");
 
     lastWord.append(charEl);
     this.animateInitialCharAppearance(charEl);
     this.lastLineCharCount += 1;
   }
 
-  /** Delete the last character on the current line (or merge lines if empty). */
   deleteChar() {
     // If there are characters on the current line, remove the last one
     if (this.lastLineCharCount > 0) {
@@ -111,26 +110,26 @@ export default class AnimatedText {
           `span[data-kind="char"][data-char-line="${this.currentLine}"]`
         )
       ) as HTMLElement[];
+
       if (!chars.length) return;
+
       // Last char is the one with the highest (least negative) tx value OR simply the last in DOM order
       const lastChar = chars[chars.length - 1];
       lastChar.remove();
       this.lastLineCharCount -= 1;
-      // Shift remaining chars right
-      this.shiftCurrentLineRight();
-
-      // If line became empty after removal, treat as removing the line itself
-      if (this.lastLineCharCount === 0 && this.currentLine > 0) {
-        this.shiftLinesDown();
-        this.currentLine -= 1;
-        this.lastLineCharCount = this.getLineCharCount(this.currentLine);
-      }
-      return;
+      this.shiftCurrentLine("right");
     }
 
     // No characters on this (empty) line: move back to previous line if exists
     if (this.lastLineCharCount === 0 && this.currentLine > 0) {
-      this.shiftLinesDown();
+      this.shiftAllLines("down");
+      this.currentLine -= 1;
+      this.lastLineCharCount = this.getLineCharCount(this.currentLine);
+    }
+
+    // If line became empty after removal, treat as removing the line itself
+    if (this.lastLineCharCount === 0 && this.currentLine > 0) {
+      this.shiftAllLines("down");
       this.currentLine -= 1;
       this.lastLineCharCount = this.getLineCharCount(this.currentLine);
     }
@@ -157,27 +156,18 @@ export default class AnimatedText {
     });
   }
 
-  shiftLinesUp() {
+  shiftAllLines(direction?: "up" | "down") {
     const lines = this.container.querySelectorAll(`span[data-type="line"]`);
 
     lines.forEach((line) => {
       const outer = line as HTMLElement;
       const currentY = parseFloat(outer.dataset.ty || "0");
-      this.animateTranslateY(outer, currentY - this.options.lineStepY);
+      const sign = direction === "down" ? 1 : -1;
+      this.animateTranslateY(outer, currentY + this.options.lineStepY * sign);
     });
   }
 
-  shiftLinesDown() {
-    const lines = this.container.querySelectorAll(`span[data-type="line"]`);
-
-    lines.forEach((line) => {
-      const outer = line as HTMLElement;
-      const currentY = parseFloat(outer.dataset.ty || "0");
-      this.animateTranslateY(outer, currentY + this.options.lineStepY);
-    });
-  }
-
-  shiftCurrentLineLeft() {
+  shiftCurrentLine(direction: "left" | "right") {
     const lineChars = document.querySelectorAll(
       `span[data-char-line="${this.currentLine}"]`
     );
@@ -185,20 +175,8 @@ export default class AnimatedText {
     lineChars.forEach((char) => {
       const outer = char as HTMLElement;
       const currentX = parseFloat(outer.dataset.tx || "0");
-      this.animateTranslateX(outer, currentX - this.options.charWidth);
-    });
-  }
-
-  // Shift all chars on current line to the right (used when deleting)
-  private shiftCurrentLineRight() {
-    const lineChars = document.querySelectorAll(
-      `span[data-char-line="${this.currentLine}"]`
-    );
-
-    lineChars.forEach((char) => {
-      const outer = char as HTMLElement;
-      const currentX = parseFloat(outer.dataset.tx || "0");
-      this.animateTranslateX(outer, currentX + this.options.charWidth);
+      const sign = direction === "right" ? 1 : -1;
+      this.animateTranslateX(outer, currentX + this.options.charWidth * sign);
     });
   }
 
