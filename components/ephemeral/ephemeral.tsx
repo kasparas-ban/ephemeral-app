@@ -12,7 +12,7 @@ const CHAR_WIDTH = 12.24; // px
 const LINE_CHAR_LIMIT = 15;
 const CARET_IDLE_DELAY = 100; // ms to wait after last input before blinking resumes
 
-export default function EphemeralClass() {
+export default function Ephemeral() {
   const editableRef = useRef<HTMLDivElement>(null);
   const textContainerRef = useRef<HTMLDivElement>(null);
   const animatorRef = useRef<AnimatedText | null>(null);

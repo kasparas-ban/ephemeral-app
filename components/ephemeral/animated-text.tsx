@@ -14,6 +14,7 @@ export type AnimatedTextOptions = {
   charOutroDuration?: number; // ms
   floatInitDuration?: number; // ms
   floatLoopDuration?: number; // ms
+  charBlurDuration?: number; // ms
 };
 
 const DEFAULT_CHAR_WIDTH = 12.24;
@@ -41,6 +42,7 @@ export default class AnimatedText {
       charOutroDuration: options?.charOutroDuration ?? 60,
       floatInitDuration: options?.floatInitDuration ?? 2000,
       floatLoopDuration: options?.floatLoopDuration ?? 2000,
+      charBlurDuration: options?.charBlurDuration ?? 10000,
     };
   }
 
@@ -106,6 +108,7 @@ export default class AnimatedText {
     lastWord.append(charEl);
     this.animateCharAppearance(charEl).finished.then(() => {
       this.animateChar(charInnerEl);
+      this.startImmediateBlur(charEl, charInnerEl);
     });
     this.lastLineCharCount += 1;
   }
@@ -308,6 +311,23 @@ export default class AnimatedText {
         iterations: Infinity,
       }
     );
+  }
+
+  // Start blur-out immediately after intro completes
+  private startImmediateBlur(outerEl: HTMLElement, innerEl: HTMLElement) {
+    const blurAnim = innerEl.animate(
+      [
+        { filter: "blur(0px)", opacity: 1 },
+        { filter: `blur(8px)`, opacity: 0 },
+      ],
+      {
+        duration: this.options.charBlurDuration,
+        easing: "cubic-bezier(0.7, 0, 0.84, 0)",
+        fill: "forwards",
+      }
+    );
+
+    blurAnim.finished.then(() => outerEl.remove());
   }
 
   private randomFloat(min: number, max: number, minAbs = 0): number {
