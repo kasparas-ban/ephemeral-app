@@ -1,3 +1,7 @@
+const LINE_MOVE_EASING = "cubic-bezier(0.22, 1, 0.36, 1)";
+const CHAR_SHIFT_EASING = "ease-out";
+const CHAR_INTRO_EASING = "ease-out";
+
 export type AnimatedTextOptions = {
   charWidth?: number; // px
   lineCharLimit?: number; // characters per line before wrapping on whitespace
@@ -7,6 +11,7 @@ export type AnimatedTextOptions = {
   charShiftDuration?: number; // ms
   lineMoveDuration?: number; // ms
   charIntroDuration?: number; // ms
+  charOutroDuration?: number; // ms
   floatInitDuration?: number; // ms
   floatLoopDuration?: number; // ms
 };
@@ -19,6 +24,7 @@ export default class AnimatedText {
   private container: HTMLElement;
   private options: Required<AnimatedTextOptions>;
   private currentLine = 0;
+  private lastLineCharCount = 0;
 
   constructor(container: HTMLElement, options?: AnimatedTextOptions) {
     this.container = container;
@@ -30,229 +36,161 @@ export default class AnimatedText {
 
       // Animation defaults (milliseconds)
       charShiftDuration: options?.charShiftDuration ?? 100,
-      lineMoveDuration: options?.lineMoveDuration ?? 200,
+      lineMoveDuration: options?.lineMoveDuration ?? 160,
       charIntroDuration: options?.charIntroDuration ?? 100,
+      charOutroDuration: options?.charOutroDuration ?? 60,
       floatInitDuration: options?.floatInitDuration ?? 2000,
       floatLoopDuration: options?.floatLoopDuration ?? 2000,
     };
   }
 
-  /** Add and animate a single character. */
-  addChar(char: string | null | undefined): HTMLSpanElement | null {
+  async addChar(char: string | null | undefined) {
     if (!char) return null;
 
     const isWhitespace = /\s/.test(char);
 
-    const lineChars = this.container.querySelectorAll(
-      `span[data-kind="char"][data-char-line="${this.currentLine}"]`
-    );
-
-    const isNewLine = lineChars
-      ? lineChars.length > this.options.lineCharLimit
+    const isNewLine = isWhitespace
+      ? this.lastLineCharCount >= this.options.lineCharLimit
       : false;
 
-    if (isNewLine && isWhitespace) {
-      this.createNewLineFromCurrentWords();
-      this.bumpPreviousLines();
-      this.currentLine += 1;
+    if (isNewLine) {
+      this.createLine();
+      this.shiftAllLines("up");
+      this.currentLine = this.currentLine + 1;
+      this.lastLineCharCount = 0;
+      return;
+    }
+
+    const isNewWord = isWhitespace || this.lastLineCharCount === 0;
+
+    // Identify if this line already has a wrapper (i.e. we moved back to edit a previous line)
+    const existingLineWrapper = this.container.querySelector(
+      `span[data-type="line"][data-line="${this.currentLine}"]`
+    ) as HTMLElement | null;
+
+    if (isNewWord) {
+      const wordEl = document.createElement("span");
+      wordEl.className = "block absolute will-change-transform";
+      wordEl.setAttribute("data-type", "word");
+      wordEl.setAttribute("data-line", this.currentLine.toString());
+      // Append inside existing line wrapper if editing a wrapped line, else directly to container
+      if (existingLineWrapper) {
+        existingLineWrapper.append(wordEl);
+      } else {
+        this.container.append(wordEl);
+      }
+    }
+
+    // Get the last word for this line (inside wrapper if present)
+    let lastWord: HTMLElement | null = null;
+    if (existingLineWrapper) {
+      lastWord = existingLineWrapper.lastElementChild as HTMLElement;
     } else {
-      // Shift existing chars on the current line left by charWidth (on outer char wrapper)
-      lineChars?.forEach((span, idx) => {
-        const outer = span as HTMLElement;
-        const targetX = -this.options.charWidth * (lineChars.length - idx);
-        this.animateTranslateX(outer, targetX);
-      });
+      lastWord = this.container.lastElementChild as HTMLElement;
     }
+    if (!lastWord) return;
 
-    // Create nested spans to separate transforms
-    // outer (char) -> inner (intro + float)
-    const charOuter = document.createElement("span");
-    charOuter.className = "block absolute will-change-transform";
-    charOuter.setAttribute("data-kind", "char");
-    charOuter.setAttribute("data-char-line", this.currentLine.toString());
-    // Track current X on outer via dataset
-    if (!charOuter.dataset.tx) charOuter.dataset.tx = "0";
+    const charInnerEl = document.createElement("span");
+    charInnerEl.textContent = char;
+    charInnerEl.className = "block absolute will-change-transform";
+    charInnerEl.setAttribute("data-kind", "inner-char");
 
-    const charInner = document.createElement("span");
-    charInner.className = "block absolute will-change-transform";
-    charInner.textContent = char;
+    const charEl = document.createElement("span");
+    charEl.className = "block absolute will-change-transform opacity-0";
+    charEl.setAttribute("data-kind", "char");
+    charEl.setAttribute("data-char-line", this.currentLine.toString());
+    charEl.append(charInnerEl);
 
-    charOuter.append(charInner);
+    this.shiftCurrentLine("left");
 
-    if (isWhitespace) {
-      if (!isNewLine) this.container.append(charOuter);
-      // After whitespace, animate last completed word
-      this.animateLastWordOnWhitespace(isNewLine);
-    } else {
-      // Non-whitespace: ensure a word wrapper and append
-      const last = this.container.lastElementChild as HTMLElement | null;
-      let wordWrapper: HTMLElement | null =
-        last && last.getAttribute("data-kind") === "word" ? last : null;
+    lastWord.append(charEl);
+    this.animateCharAppearance(charEl).finished.then(() => {
+      this.animateChar(charInnerEl);
+    });
+    this.lastLineCharCount += 1;
+  }
 
-      if (!wordWrapper) {
-        wordWrapper = document.createElement("span");
-        wordWrapper.className = "block absolute will-change-transform";
-        wordWrapper.setAttribute("data-kind", "word");
-        wordWrapper.setAttribute("data-word-line", this.currentLine.toString());
-        this.container.append(wordWrapper);
-      }
+  deleteChar() {
+    // If there are characters on the current line, remove the last one
+    if (this.lastLineCharCount > 0) {
+      const chars = Array.from(
+        this.container.querySelectorAll(
+          `span[data-kind="char"][data-char-line="${this.currentLine}"]`
+        )
+      ) as HTMLElement[];
 
-      wordWrapper.append(charOuter);
+      if (!chars.length) return;
 
-      // 1) Intro animation on inner: translateX % and opacity
-      const intro = charInner.animate(
-        [
-          { transform: "translateX(-50%)", opacity: 0 },
-          { transform: "translateX(-100%)", opacity: 1 },
-        ],
-        {
-          duration: this.options.charIntroDuration,
-          easing: "ease-out",
-          fill: "forwards",
-        }
+      const lastChar = chars[chars.length - 1];
+      lastChar.setAttribute("data-kind", "char-deleting");
+      this.animateCharDisappearance(lastChar).finished.then(() =>
+        lastChar.remove()
       );
-
-      intro.finished.then(async () => {
-        // 2) Move to initial float position (y/rotate)
-        const y0 = this.randomFloat(-1, 1, 0.5);
-        const r0 = this.randomFloat(-2, 2, 0.5);
-
-        const toInit = charInner.animate(
-          [
-            { transform: `translateX(-100%) translateY(0px) rotate(0deg)` },
-            {
-              transform: `translateX(-100%) translateY(${y0}px) rotate(${r0}deg)`,
-            },
-          ],
-          {
-            duration: this.options.floatInitDuration,
-            easing: "ease-in-out",
-            fill: "forwards",
-          }
-        );
-
-        return toInit.finished.then(() => {
-          // 3) Infinite float loop between two positions
-          const y1 = this.randomFloat(-1.5, 1.5, 0.5);
-          const r1 = this.randomFloat(-2, 2, 0.5);
-
-          charInner.animate(
-            [
-              {
-                transform: `translateX(-100%) translateY(${y0}px) rotate(${r0}deg)`,
-              },
-              {
-                transform: `translateX(-100%) translateY(${y1}px) rotate(${r1}deg)`,
-              },
-            ],
-            {
-              duration: this.options.floatLoopDuration,
-              easing: "ease-in-out",
-              direction: "alternate",
-              iterations: Infinity,
-            }
-          );
-        });
-      });
+      this.lastLineCharCount -= 1;
+      this.shiftCurrentLine("right");
     }
 
-    return charOuter;
-  }
-
-  /** Remove all children and cancel ongoing animations */
-  clear(): void {
-    while (this.container.firstChild) {
-      const node = this.container.firstChild as HTMLElement;
-      try {
-        // Clone cancels all running animations
-        const clone = node.cloneNode(true);
-        this.container.replaceChild(clone, node);
-        this.container.removeChild(clone);
-      } catch {
-        this.container.removeChild(node);
-      }
+    // No characters on this (empty) line: move back to previous line if exists
+    if (this.lastLineCharCount === 0 && this.currentLine > 0) {
+      this.shiftAllLines("down");
+      this.currentLine -= 1;
+      this.lastLineCharCount = this.getLineCharCount(this.currentLine);
     }
 
-    this.currentLine = 0;
-  }
-
-  // --- Advanced helpers ---
-
-  private createNewLineFromCurrentWords() {
-    const lineWords = this.container?.querySelectorAll(
-      `span[data-kind="word"][data-word-line="${this.currentLine}"]`
-    );
-    const lineSpan = document.createElement("span");
-    lineSpan.className = "block absolute will-change-transform";
-    lineSpan.setAttribute("data-line", this.currentLine.toString());
-    if (!lineSpan.dataset.ty) lineSpan.dataset.ty = "0";
-    lineSpan.append(...(lineWords ? Array.from(lineWords) : []));
-    this.container.append(lineSpan);
-  }
-
-  private bumpPreviousLines() {
-    for (let line = 0; line <= this.currentLine; line++) {
-      const lineSpan = this.container.querySelector(
-        `span[data-line="${line}"]`
-      ) as HTMLElement | null;
-      if (!lineSpan) continue;
-
-      const fromY = parseFloat(lineSpan.dataset.ty || "0");
-      const toY = -this.options.lineStepY * (this.currentLine - line + 1);
-
-      lineSpan.animate(
-        [
-          { transform: `translateY(${fromY}px)` },
-          { transform: `translateY(${toY}px)` },
-        ],
-        {
-          duration: this.options.lineMoveDuration,
-          easing: "ease-out",
-          fill: "forwards",
-        }
-      );
-
-      lineSpan.dataset.ty = String(toY);
+    // If line became empty after removal, treat as removing the line itself
+    if (this.lastLineCharCount === 0 && this.currentLine > 0) {
+      this.shiftAllLines("down");
+      this.currentLine -= 1;
+      this.lastLineCharCount = this.getLineCharCount(this.currentLine);
     }
   }
 
-  private async animateLastWordOnWhitespace(isNewLine: boolean) {
-    if (isNewLine) return;
-
-    const children = this.container.children;
-    if (children.length < 2) return;
-
-    const lastWord = children[children.length - 2] as HTMLElement | null;
-    if (!lastWord || lastWord.getAttribute("data-kind") !== "word") return;
-
-    const y0 = this.randomFloat(-2, 2, 1);
-
-    const toInit = lastWord.animate(
-      [{ transform: `translateY(0px)` }, { transform: `translateY(${y0}px)` }],
-      {
-        duration: this.options.floatInitDuration,
-        easing: "ease-in-out",
-        fill: "forwards",
-      }
-    );
-
-    await toInit.finished;
-
-    const y1 = this.randomFloat(-2, 2, 1);
-    lastWord.animate(
-      [
-        { transform: `translateY(${y0}px)` },
-        { transform: `translateY(${y1}px)` },
-      ],
-      {
-        duration: this.options.floatLoopDuration,
-        easing: "ease-in-out",
-        direction: "alternate",
-        iterations: Infinity,
-        fill: "both",
-      }
-    );
+  private getLineCharCount(line: number) {
+    return this.container.querySelectorAll(
+      `span[data-kind="char"][data-char-line="${line}"]`
+    ).length;
   }
+
+  createLine() {
+    const lineEl = document.createElement("span");
+    lineEl.className = "block absolute will-change-transform";
+    lineEl.setAttribute("data-type", "line");
+    lineEl.setAttribute("data-line", this.currentLine.toString());
+    this.container.append(lineEl);
+
+    const lineWords = this.container.querySelectorAll(
+      `span[data-type="word"][data-line="${this.currentLine}"]`
+    );
+    lineWords.forEach((word) => {
+      (lineEl as HTMLElement).append(word);
+    });
+  }
+
+  shiftAllLines(direction?: "up" | "down") {
+    const lines = this.container.querySelectorAll(`span[data-type="line"]`);
+
+    lines.forEach((line) => {
+      const outer = line as HTMLElement;
+      const currentY = parseFloat(outer.dataset.ty || "0");
+      const sign = direction === "down" ? 1 : -1;
+      this.animateTranslateY(outer, currentY + this.options.lineStepY * sign);
+    });
+  }
+
+  shiftCurrentLine(direction: "left" | "right") {
+    const lineChars = document.querySelectorAll(
+      `span[data-char-line="${this.currentLine}"]`
+    );
+
+    lineChars.forEach((char) => {
+      const outer = char as HTMLElement;
+      const currentX = parseFloat(outer.dataset.tx || "0");
+      const sign = direction === "right" ? 1 : -1;
+      this.animateTranslateX(outer, currentX + this.options.charWidth * sign);
+    });
+  }
+
+  // ========== Animations ===========
 
   private animateTranslateX(el: HTMLElement, toX: number) {
     const fromX = parseFloat(el.dataset.tx || "0");
@@ -264,7 +202,7 @@ export default class AnimatedText {
       ],
       {
         duration: this.options.charShiftDuration,
-        easing: "ease-out",
+        easing: CHAR_SHIFT_EASING,
         fill: "forwards",
       }
     );
@@ -272,57 +210,125 @@ export default class AnimatedText {
     el.dataset.tx = String(toX);
   }
 
-  // Updated to support controlling minimum absolute value of the result when possible
-  private randomFloat(min: number, max: number, minAbs = 0): number {
-    // Ensure valid ordering
-    if (min > max) [min, max] = [max, min];
+  private animateTranslateY(el: HTMLElement, toY: number) {
+    const fromY = parseFloat(el.dataset.ty || "0");
 
-    // No constraint requested
-    if (minAbs <= 0) {
-      return Math.random() * (max - min) + min;
-    }
-
-    // If the entire range is already outside the exclusion zone [-minAbs, minAbs], sample uniformly
-    if (max <= -minAbs || min >= minAbs) {
-      return Math.random() * (max - min) + min;
-    }
-
-    const negExists = min < -minAbs; // there is a valid negative interval [min, -minAbs]
-    const posExists = max > minAbs; // there is a valid positive interval [minAbs, max]
-
-    // If neither side can satisfy the constraint (range fully within (-minAbs, minAbs)), fall back to uniform
-    if (!negExists && !posExists) {
-      return Math.random() * (max - min) + min;
-    }
-
-    // Both sides available: choose proportionally to interval lengths
-    if (negExists && posExists) {
-      const negStart = min;
-      const negEnd = -minAbs;
-      const posStart = minAbs;
-      const posEnd = max;
-
-      const lenNeg = negEnd - negStart; // > 0
-      const lenPos = posEnd - posStart; // > 0
-
-      const useNeg = Math.random() < lenNeg / (lenNeg + lenPos);
-      if (useNeg) {
-        return negStart + Math.random() * lenNeg;
-      } else {
-        return posStart + Math.random() * lenPos;
+    el.animate(
+      [
+        { transform: `translateY(${fromY}px)` },
+        { transform: `translateY(${toY}px)` },
+      ],
+      {
+        duration: this.options.lineMoveDuration,
+        easing: LINE_MOVE_EASING,
+        fill: "forwards",
       }
-    }
+    );
 
-    // Only negative side available
-    if (negExists) {
-      const start = min;
-      const end = Math.min(max, -minAbs);
-      return start + Math.random() * (end - start);
-    }
+    el.dataset.ty = String(toY);
+  }
 
-    // Only positive side available
-    const start = Math.max(min, minAbs);
-    const end = max;
-    return start + Math.random() * (end - start);
+  animateCharAppearance(el: HTMLElement) {
+    const animation = el.animate(
+      [
+        { opacity: 0, transform: "translateX(0px)" },
+        { opacity: 1, transform: `translateX(-${this.options.charWidth}px)` },
+      ],
+      {
+        duration: this.options.charIntroDuration,
+        easing: CHAR_INTRO_EASING,
+        fill: "forwards",
+      }
+    );
+
+    el.dataset.tx = String(-this.options.charWidth);
+
+    return animation;
+  }
+
+  animateCharDisappearance(el: HTMLElement) {
+    const animation = el.animate([{ opacity: 1 }, { opacity: 0 }], {
+      duration: this.options.charOutroDuration,
+      easing: CHAR_INTRO_EASING,
+      fill: "forwards",
+    });
+
+    return animation;
+  }
+
+  async animateChar(el: HTMLElement) {
+    // Move to initial float position (y/rotate)
+    const y0 = this.randomFloat(-1, 1, 0.5);
+    const r0 = this.randomFloat(-2, 2, 0.5);
+
+    const currentX = parseFloat(el.dataset.tx || "0");
+    const currentY = parseFloat(el.dataset.ty || "0");
+
+    const toInit = el.animate(
+      [
+        {
+          transform: `translateX(${currentX}px) translateY(${currentY}px) rotate(0deg)`,
+        },
+        {
+          transform: `translateX(${currentX}px) translateY(${
+            currentY + y0
+          }px) rotate(${r0}deg)`,
+        },
+      ],
+      {
+        duration: this.options.floatInitDuration,
+        easing: "ease-in-out",
+        fill: "forwards",
+      }
+    );
+
+    await toInit.finished;
+
+    // Infinite float loop between two positions
+    const y1 = this.randomFloat(-1.5, 1.5, 0.5);
+    const r1 = this.randomFloat(-2, 2, 0.5);
+
+    el.animate(
+      [
+        {
+          transform: `translateX(${currentX}px) translateY(${
+            currentY + y0
+          }px) rotate(${r0}deg)`,
+        },
+        {
+          transform: `translateX(${currentX}px) translateY(${
+            currentY + y1
+          }px) rotate(${r1}deg)`,
+        },
+      ],
+      {
+        duration: this.options.floatLoopDuration,
+        easing: "ease-in-out",
+        direction: "alternate",
+        iterations: Infinity,
+      }
+    );
+  }
+
+  private randomFloat(min: number, max: number, minAbs = 0): number {
+    if (min > max) [min, max] = [max, min];
+    const rand = (a: number, b: number) => Math.random() * (b - a) + a;
+
+    if (minAbs <= 0 || max <= -minAbs || min >= minAbs) return rand(min, max);
+
+    // Collect valid intervals outside the exclusion zone [-minAbs, minAbs]
+    const intervals: [number, number][] = [];
+    if (min < -minAbs) intervals.push([min, Math.min(max, -minAbs)]);
+    if (max > minAbs) intervals.push([Math.max(min, minAbs), max]);
+
+    // If no valid outside interval, fall back to uniform
+    if (!intervals.length) return rand(min, max);
+    if (intervals.length === 1) return rand(intervals[0][0], intervals[0][1]);
+
+    // Weighted pick proportional to interval length
+    const [[a1, b1], [a2, b2]] = intervals;
+    const len1 = b1 - a1;
+    const len2 = b2 - a2;
+    return Math.random() < len1 / (len1 + len2) ? rand(a1, b1) : rand(a2, b2);
   }
 }
