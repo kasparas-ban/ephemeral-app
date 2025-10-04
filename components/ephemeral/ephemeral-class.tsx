@@ -65,12 +65,6 @@ export default function EphemeralClass() {
     animatorRef.current = new AnimatedText(textContainerRef.current, {
       charWidth: CHAR_WIDTH,
       lineCharLimit: LINE_CHAR_LIMIT,
-      lineStepY: 30,
-      charShiftDuration: 100,
-      lineMoveDuration: 250,
-      charIntroDuration: 100,
-      floatInitDuration: 2000,
-      floatLoopDuration: 3000,
     });
 
     return () => {

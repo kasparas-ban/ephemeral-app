@@ -11,6 +11,7 @@ export type AnimatedTextOptions = {
   charShiftDuration?: number; // ms
   lineMoveDuration?: number; // ms
   charIntroDuration?: number; // ms
+  charOutroDuration?: number; // ms
   floatInitDuration?: number; // ms
   floatLoopDuration?: number; // ms
 };
@@ -37,12 +38,12 @@ export default class AnimatedText {
       charShiftDuration: options?.charShiftDuration ?? 100,
       lineMoveDuration: options?.lineMoveDuration ?? 160,
       charIntroDuration: options?.charIntroDuration ?? 100,
+      charOutroDuration: options?.charOutroDuration ?? 60,
       floatInitDuration: options?.floatInitDuration ?? 2000,
       floatLoopDuration: options?.floatLoopDuration ?? 2000,
     };
   }
 
-  /** Add and animate a single character. */
   addChar(char: string | null | undefined) {
     if (!char) return null;
 
@@ -98,7 +99,7 @@ export default class AnimatedText {
     this.shiftCurrentLine("left");
 
     lastWord.append(charEl);
-    this.animateInitialCharAppearance(charEl);
+    this.animateCharAppearance(charEl);
     this.lastLineCharCount += 1;
   }
 
@@ -113,9 +114,11 @@ export default class AnimatedText {
 
       if (!chars.length) return;
 
-      // Last char is the one with the highest (least negative) tx value OR simply the last in DOM order
       const lastChar = chars[chars.length - 1];
-      lastChar.remove();
+      lastChar.setAttribute("data-kind", "char-deleting");
+      this.animateCharDisappearance(lastChar).finished.then(() =>
+        lastChar.remove()
+      );
       this.lastLineCharCount -= 1;
       this.shiftCurrentLine("right");
     }
@@ -180,6 +183,8 @@ export default class AnimatedText {
     });
   }
 
+  // ========== Animations ===========
+
   private animateTranslateX(el: HTMLElement, toX: number) {
     const fromX = parseFloat(el.dataset.tx || "0");
 
@@ -216,7 +221,7 @@ export default class AnimatedText {
     el.dataset.ty = String(toY);
   }
 
-  animateInitialCharAppearance(el: HTMLElement) {
+  animateCharAppearance(el: HTMLElement) {
     el.animate(
       [
         { opacity: 0, transform: "translateX(0px)" },
@@ -230,5 +235,15 @@ export default class AnimatedText {
     );
 
     el.dataset.tx = String(-this.options.charWidth);
+  }
+
+  animateCharDisappearance(el: HTMLElement) {
+    const animation = el.animate([{ opacity: 1 }, { opacity: 0 }], {
+      duration: this.options.charOutroDuration,
+      easing: CHAR_INTRO_EASING,
+      fill: "forwards",
+    });
+
+    return animation;
   }
 }
