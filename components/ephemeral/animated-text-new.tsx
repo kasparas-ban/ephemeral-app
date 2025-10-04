@@ -44,7 +44,7 @@ export default class AnimatedText {
     };
   }
 
-  addChar(char: string | null | undefined) {
+  async addChar(char: string | null | undefined) {
     if (!char) return null;
 
     const isWhitespace = /\s/.test(char);
@@ -90,16 +90,23 @@ export default class AnimatedText {
     }
     if (!lastWord) return;
 
+    const charInnerEl = document.createElement("span");
+    charInnerEl.textContent = char;
+    charInnerEl.className = "block absolute will-change-transform";
+    charInnerEl.setAttribute("data-kind", "inner-char");
+
     const charEl = document.createElement("span");
-    charEl.textContent = char;
     charEl.className = "block absolute will-change-transform opacity-0";
     charEl.setAttribute("data-kind", "char");
     charEl.setAttribute("data-char-line", this.currentLine.toString());
+    charEl.append(charInnerEl);
 
     this.shiftCurrentLine("left");
 
     lastWord.append(charEl);
-    this.animateCharAppearance(charEl);
+    this.animateCharAppearance(charEl).finished.then(() => {
+      this.animateChar(charInnerEl);
+    });
     this.lastLineCharCount += 1;
   }
 
@@ -222,7 +229,7 @@ export default class AnimatedText {
   }
 
   animateCharAppearance(el: HTMLElement) {
-    el.animate(
+    const animation = el.animate(
       [
         { opacity: 0, transform: "translateX(0px)" },
         { opacity: 1, transform: `translateX(-${this.options.charWidth}px)` },
@@ -235,6 +242,8 @@ export default class AnimatedText {
     );
 
     el.dataset.tx = String(-this.options.charWidth);
+
+    return animation;
   }
 
   animateCharDisappearance(el: HTMLElement) {
@@ -245,5 +254,81 @@ export default class AnimatedText {
     });
 
     return animation;
+  }
+
+  async animateChar(el: HTMLElement) {
+    // Move to initial float position (y/rotate)
+    const y0 = this.randomFloat(-1, 1, 0.5);
+    const r0 = this.randomFloat(-2, 2, 0.5);
+
+    const currentX = parseFloat(el.dataset.tx || "0");
+    const currentY = parseFloat(el.dataset.ty || "0");
+
+    const toInit = el.animate(
+      [
+        {
+          transform: `translateX(${currentX}px) translateY(${currentY}px) rotate(0deg)`,
+        },
+        {
+          transform: `translateX(${currentX}px) translateY(${
+            currentY + y0
+          }px) rotate(${r0}deg)`,
+        },
+      ],
+      {
+        duration: this.options.floatInitDuration,
+        easing: "ease-in-out",
+        fill: "forwards",
+      }
+    );
+
+    await toInit.finished;
+
+    // Infinite float loop between two positions
+    const y1 = this.randomFloat(-1.5, 1.5, 0.5);
+    const r1 = this.randomFloat(-2, 2, 0.5);
+
+    el.animate(
+      [
+        {
+          transform: `translateX(${currentX}px) translateY(${
+            currentY + y0
+          }px) rotate(${r0}deg)`,
+        },
+        {
+          transform: `translateX(${currentX}px) translateY(${
+            currentY + y1
+          }px) rotate(${r1}deg)`,
+        },
+      ],
+      {
+        duration: this.options.floatLoopDuration,
+        easing: "ease-in-out",
+        direction: "alternate",
+        iterations: Infinity,
+      }
+    );
+  }
+
+  private randomFloat(min: number, max: number, minAbs = 0): number {
+    if (min > max) [min, max] = [max, min];
+    const rand = (a: number, b: number) => Math.random() * (b - a) + a;
+
+    if (minAbs <= 0 || max <= -minAbs || min >= minAbs) return rand(min, max);
+
+    // Collect valid intervals outside the exclusion zone [-minAbs, minAbs]
+    const intervals: [number, number][] = [];
+    if (min < -minAbs) intervals.push([min, Math.min(max, -minAbs)]);
+    if (max > minAbs) intervals.push([Math.max(min, minAbs), max]);
+
+    // If no valid outside interval, fall back to uniform
+    if (!intervals.length) return rand(min, max);
+    if (intervals.length === 1) return rand(intervals[0][0], intervals[0][1]);
+
+    // Weighted pick proportional to interval length
+    const [[a1, b1], [a2, b2]] = intervals;
+    const len1 = b1 - a1;
+    const len2 = b2 - a2;
+    return Math.random() < len1 / (len1 + len2) ? rand(a1, b1) : rand(a2, b2);
   }
 }
