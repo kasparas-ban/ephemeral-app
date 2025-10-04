@@ -1,3 +1,4 @@
+const CHAR_BLUR_EASING = "cubic-bezier(0.7, 0, 0.84, 0)";
 const LINE_MOVE_EASING = "cubic-bezier(0.22, 1, 0.36, 1)";
 const CHAR_SHIFT_EASING = "ease-out";
 const CHAR_INTRO_EASING = "ease-out";
@@ -26,6 +27,7 @@ export default class AnimatedText {
   private options: Required<AnimatedTextOptions>;
   private currentLine = 0;
   private lastLineCharCount = 0;
+  private isFlushing = false;
 
   constructor(container: HTMLElement, options?: AnimatedTextOptions) {
     this.container = container;
@@ -47,6 +49,7 @@ export default class AnimatedText {
   }
 
   async addChar(char: string | null | undefined) {
+    if (this.isFlushing) return null; // ignore input during flush
     if (!char) return null;
 
     const isWhitespace = /\s/.test(char);
@@ -322,12 +325,12 @@ export default class AnimatedText {
       ],
       {
         duration: this.options.charBlurDuration,
-        easing: "cubic-bezier(0.7, 0, 0.84, 0)",
+        easing: CHAR_BLUR_EASING,
         fill: "forwards",
       }
     );
 
-    blurAnim.finished.then(() => outerEl.remove());
+    blurAnim.finished.then(() => outerEl.remove()).catch(() => {});
   }
 
   private randomFloat(min: number, max: number, minAbs = 0): number {
@@ -350,5 +353,68 @@ export default class AnimatedText {
     const len1 = b1 - a1;
     const len2 = b2 - a2;
     return Math.random() < len1 / (len1 + len2) ? rand(a1, b1) : rand(a2, b2);
+  }
+
+  /** Blur out all characters quickly (used on Enter) then clear state */
+  async blurAll() {
+    if (this.isFlushing) return;
+    this.isFlushing = true;
+
+    const chars = Array.from(
+      this.container.querySelectorAll(
+        'span[data-kind="char"], span[data-kind="char-deleting"]'
+      )
+    ) as HTMLElement[];
+
+    if (!chars.length) {
+      this.isFlushing = false;
+      return;
+    }
+
+    // Animate each inner char to blur & fade quickly (override long blur timers)
+    const animations: Promise<unknown>[] = [];
+    chars.forEach((outer) => {
+      const inner = outer.querySelector(
+        'span[data-kind="inner-char"]'
+      ) as HTMLElement | null;
+      if (!inner) return;
+
+      // Get current computed styles BEFORE cancelling animations
+      const cs = getComputedStyle(inner);
+      const currentOpacity = parseFloat(cs.opacity || "1");
+      const filter = cs.filter || "none";
+      let currentBlur = 0;
+      const match = /blur\(([-0-9.]+)px\)/.exec(filter);
+      if (match) currentBlur = parseFloat(match[1]);
+
+      // Cancel any ongoing animations so they stop affecting computed style afterward
+      inner.getAnimations().forEach((a) => a.cancel());
+
+      const anim = inner.animate(
+        [
+          { filter: `blur(${currentBlur}px)`, opacity: currentOpacity },
+          { filter: "blur(10px)", opacity: 0 },
+        ],
+        {
+          duration: 250,
+          easing: "ease-in",
+          fill: "forwards",
+        }
+      );
+      animations.push(anim.finished.then(() => outer.remove()).catch(() => {}));
+    });
+
+    await Promise.allSettled(animations);
+
+    // Remove any lingering word / line wrappers
+    const wrappers = this.container.querySelectorAll(
+      'span[data-type="word"], span[data-type="line"]'
+    );
+    wrappers.forEach((el) => el.remove());
+
+    // Reset bookkeeping
+    this.currentLine = 0;
+    this.lastLineCharCount = 0;
+    this.isFlushing = false;
   }
 }

@@ -43,6 +43,14 @@ export default function Ephemeral() {
     const inputEvent = e.nativeEvent as InputEvent;
     const char = inputEvent.data;
 
+    // Handle Enter (paragraph insertion)
+    if (inputEvent.inputType === "insertParagraph") {
+      animatorRef.current.blurAll();
+      setText("");
+      showCaretWhileTyping();
+      return;
+    }
+
     if (inputEvent.inputType === "deleteContentBackward") {
       animatorRef.current.deleteChar();
       showCaretWhileTyping();
