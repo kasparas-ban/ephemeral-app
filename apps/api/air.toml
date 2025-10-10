@@ -2,6 +2,5 @@ root = "."
 cmd = "go build -o ./bin/api . && ./bin/api"
 include_ext = ["go"]
 exclude_dir = ["bin", "node_modules"]
-log = "\u001b[36m[air]\u001b[0m"
 
 
