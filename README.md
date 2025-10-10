@@ -1,36 +1,89 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## Monorepo Overview
 
-## Getting Started
+Turborepo monorepo with a Next.js app and a Go API.
 
-First, run the development server:
+```
+apps/
+  web/        # Next.js application
+  api/        # Go (net/http) API on :8080
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm-workspace.yaml    # workspace packages
+turbo.json             # Turborepo tasks
+tsconfig.base.json     # shared TS config
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Prerequisites
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- Node.js and PNPM (workspace uses PNPM)
+- Go 1.22+
+- Air (Go hot reload) — install with:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+go install github.com/air-verse/air@latest
+```
 
-## Learn More
+Ensure your `GOBIN` is on `PATH` so `air` is available.
 
-To learn more about Next.js, take a look at the following resources:
+## Install
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+pnpm install
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Development
 
-## Deploy on Vercel
+- Run all apps (web + api):
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+pnpm dev
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Run only one app:
+
+```bash
+pnpm --filter web dev   # Next.js (http://localhost:3000)
+pnpm --filter api dev   # Go API with air (http://localhost:8080)
+```
+
+The web app consumes the API via `NEXT_PUBLIC_API_URL`. This is set in `apps/web/.env.local`:
+
+```bash
+NEXT_PUBLIC_API_URL=http://localhost:8080
+```
+
+## Build
+
+- Build everything via Turborepo:
+
+```bash
+pnpm build
+```
+
+- Build individually:
+
+```bash
+pnpm -C apps/web build
+pnpm -C apps/api build
+```
+
+## Run (Production)
+
+```bash
+# after pnpm build
+pnpm -C apps/web start          # Next.js
+pnpm -C apps/api start          # Go binary (built at apps/api/bin/api)
+```
+
+## Useful Commands
+
+```bash
+pnpm -r lint            # run lint across workspace (if configured)
+pnpm -r typecheck       # run typecheck across workspace (if configured)
+pnpm clean              # turbo clean
+```
+
+## Notes
+
+- Workspace packages are defined in `pnpm-workspace.yaml` (`apps/*`, `packages/*`).
+- Turborepo tasks are configured in `turbo.json` (`dev`, `build`, `lint`, `typecheck`).
+- The Next.js app (`apps/web`) uses `@/*` path alias.

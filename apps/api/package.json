@@ -1,0 +1,11 @@
+{
+  "name": "api",
+  "private": true,
+  "scripts": {
+    "dev": "air -c air.toml",
+    "build": "go build -o ./bin/api",
+    "start": "./bin/api",
+    "lint": "go vet ./...",
+    "typecheck": "echo 'no ts typecheck'"
+  }
+}
