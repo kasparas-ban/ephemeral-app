@@ -288,7 +288,11 @@ export default class AnimatedText {
       }
     );
 
-    await toInit.finished;
+    try {
+      await toInit.finished;
+    } catch {
+      return;
+    }
 
     // Infinite float loop between two positions
     const y1 = this.randomFloat(-1.5, 1.5, 0.5);
