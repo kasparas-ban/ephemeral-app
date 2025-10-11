@@ -2,7 +2,11 @@ module api
 
 go 1.25
 
-require github.com/air-verse/air v1.63.0
+require (
+	github.com/air-verse/air v1.63.0
+	github.com/google/uuid v1.6.0
+	github.com/gorilla/websocket v1.5.3
+)
 
 require (
 	dario.cat/mergo v1.0.2 // indirect
