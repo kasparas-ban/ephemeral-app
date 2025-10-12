@@ -10,9 +10,9 @@ import (
 )
 
 const (
-	writeWait      = 10 * time.Second
-	pongWait       = 60 * time.Second
-	pingPeriod     = 20 * time.Second
+	writeWait      = 60 * time.Second
+	pongWait       = 90 * time.Second
+	pingPeriod     = 30 * time.Second
 	maxMessageSize = 8192
 )
 
@@ -159,12 +159,11 @@ func (c *Client) handleHello() {
 
 func (c *Client) handleTypingStart(msg TypingStartMessage) {
 	broadcast := TypingStateMessage{
-		Type:          "typing_state",
-		FromUserID:    c.userID,
-		CompositionID: msg.CompositionID,
-		Seq:           0,
-		Text:          "",
-		Ts:            nowMs(),
+		Type:       "typing_state",
+		FromUserID: c.userID,
+		Seq:        0,
+		Text:       "",
+		Ts:         nowMs(),
 	}
 	c.hub.BroadcastMessageExcept(c, broadcast)
 }
@@ -176,24 +175,22 @@ func (c *Client) handleTypingUpdate(msg TypingUpdateMessage) {
 	}
 
 	broadcast := TypingStateMessage{
-		Type:          "typing_state",
-		FromUserID:    c.userID,
-		CompositionID: msg.CompositionID,
-		Seq:           msg.Seq,
-		Text:          msg.Text,
-		Ts:            nowMs(),
+		Type:       "typing_state",
+		FromUserID: c.userID,
+		Seq:        msg.Seq,
+		Text:       msg.Text,
+		Ts:         nowMs(),
 	}
 	c.hub.BroadcastMessageExcept(c, broadcast)
 }
 
 func (c *Client) handleTypingEnd(msg TypingEndMessage) {
 	broadcast := TypingEndBroadcast{
-		Type:          "typing_end",
-		FromUserID:    c.userID,
-		CompositionID: msg.CompositionID,
-		FinalText:     msg.FinalText,
-		Ts:            nowMs(),
-		TTLMs:         msg.TTLMs,
+		Type:       "typing_end",
+		FromUserID: c.userID,
+		FinalText:  msg.FinalText,
+		Ts:         nowMs(),
+		TTLMs:      msg.TTLMs,
 	}
 	c.hub.BroadcastMessageExcept(c, broadcast)
 }

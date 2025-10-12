@@ -9,22 +9,22 @@ type HelloMessage struct {
 }
 
 type TypingStartMessage struct {
-	Type          string `json:"type"` // "typing_start"
-	CompositionID string `json:"compositionId"`
+	Type   string `json:"type"` // "typing_start"
+	UserID string `json:"userId"`
 }
 
 type TypingUpdateMessage struct {
-	Type          string `json:"type"` // "typing_update"
-	CompositionID string `json:"compositionId"`
-	Seq           int    `json:"seq"`
-	Text          string `json:"text"`
+	Type   string `json:"type"` // "typing_update"
+	UserID string `json:"userId"`
+	Seq    int    `json:"seq"`
+	Text   string `json:"text"`
 }
 
 type TypingEndMessage struct {
-	Type          string  `json:"type"` // "typing_end"
-	CompositionID string  `json:"compositionId"`
-	FinalText     *string `json:"finalText,omitempty"`
-	TTLMs         *int    `json:"ttlMs,omitempty"`
+	Type      string  `json:"type"` // "typing_end"
+	UserID    string  `json:"userId"`
+	FinalText *string `json:"finalText,omitempty"`
+	TTLMs     *int    `json:"ttlMs,omitempty"`
 }
 
 // Server -> Client messages
@@ -44,21 +44,19 @@ type PresenceMessage struct {
 }
 
 type TypingStateMessage struct {
-	Type          string `json:"type"` // "typing_state"
-	FromUserID    string `json:"fromUserId"`
-	CompositionID string `json:"compositionId"`
-	Seq           int    `json:"seq"`
-	Text          string `json:"text"`
-	Ts            int64  `json:"ts"`
+	Type       string `json:"type"` // "typing_state"
+	FromUserID string `json:"fromUserId"`
+	Seq        int    `json:"seq"`
+	Text       string `json:"text"`
+	Ts         int64  `json:"ts"`
 }
 
 type TypingEndBroadcast struct {
-	Type          string  `json:"type"` // "typing_end"
-	FromUserID    string  `json:"fromUserId"`
-	CompositionID string  `json:"compositionId"`
-	FinalText     *string `json:"finalText,omitempty"`
-	Ts            int64   `json:"ts"`
-	TTLMs         *int    `json:"ttlMs,omitempty"`
+	Type       string  `json:"type"` // "typing_end"
+	FromUserID string  `json:"fromUserId"`
+	FinalText  *string `json:"finalText,omitempty"`
+	Ts         int64   `json:"ts"`
+	TTLMs      *int    `json:"ttlMs,omitempty"`
 }
 
 // Helper function to get current timestamp in milliseconds
