@@ -4,10 +4,6 @@ import "time"
 
 // Client -> Server messages
 
-type HelloMessage struct {
-	Type string `json:"type"` // "hello"
-}
-
 type TypingUpdateMessage struct {
 	Type   string `json:"type"` // "typing_update"
 	UserID string `json:"userId"`
@@ -22,11 +18,6 @@ type TypingEndMessage struct {
 }
 
 // Server -> Client messages
-
-type HelloAckMessage struct {
-	Type   string `json:"type"` // "hello_ack"
-	UserID string `json:"userId"`
-}
 
 type PresenceUser struct {
 	ID string `json:"id"`

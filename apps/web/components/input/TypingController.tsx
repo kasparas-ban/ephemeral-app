@@ -2,7 +2,6 @@
 
 import {
   ClientEnvelope,
-  HelloAck,
   Presence,
   TypingEnd,
   TypingEndMsg,
@@ -10,7 +9,7 @@ import {
   TypingUpdateMsg,
 } from "@/lib/types";
 import { WSClient } from "@/lib/ws";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
 function ulid() {
   // lightweight ULID-like
@@ -18,7 +17,6 @@ function ulid() {
 }
 
 export default function TypingController() {
-  const [userId, setUserId] = useState<string | null>(null);
   const wsRef = useRef<WSClient | null>(null);
   const compIdRef = useRef<string | null>(null);
   const bufferRef = useRef<string>("");
@@ -26,7 +24,6 @@ export default function TypingController() {
 
   useEffect(() => {
     const ws = new WSClient({
-      helloAck: (m: HelloAck) => setUserId(m.userId),
       presence: (_: Presence) => {},
       typingState: (m: TypingState) =>
         (globalThis as any).__worldCanvas?.applyTypingState(m),

@@ -1,14 +1,12 @@
 import {
   ClientEnvelope,
-  ServerEnvelope,
-  HelloAck,
   Presence,
+  ServerEnvelope,
   TypingEnd,
   TypingState,
 } from "./types";
 
 type Handlers = {
-  helloAck?: (msg: HelloAck) => void;
   presence?: (msg: Presence) => void;
   typingState?: (msg: TypingState) => void;
   typingEnd?: (msg: TypingEnd) => void;
@@ -47,9 +45,6 @@ export class WSClient {
       try {
         const msg = JSON.parse(ev.data as string) as ServerEnvelope<any>;
         switch (msg.type) {
-          case "hello_ack":
-            this.handlers.helloAck?.(msg.data as HelloAck);
-            break;
           case "presence":
             this.handlers.presence?.(msg.data as Presence);
             break;

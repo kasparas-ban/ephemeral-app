@@ -106,9 +106,6 @@ func (c *Client) handleMessage(data []byte) {
 	}
 
 	switch baseMsg.Type {
-	case "hello":
-		c.handleHello()
-
 	case "typing_update":
 		var msg TypingUpdateMessage
 		if err := json.Unmarshal(data, &msg); err != nil {
@@ -127,25 +124,6 @@ func (c *Client) handleMessage(data []byte) {
 
 	default:
 		log.Printf("Unknown message type from %s: %s", c.userID, baseMsg.Type)
-	}
-}
-
-func (c *Client) handleHello() {
-	response := HelloAckMessage{
-		Type:   "hello_ack",
-		UserID: c.userID,
-	}
-
-	data, err := json.Marshal(response)
-	if err != nil {
-		log.Printf("Error marshaling hello_ack: %v", err)
-		return
-	}
-
-	select {
-	case c.send <- data:
-	default:
-		log.Printf("Client %s send buffer full for hello_ack", c.userID)
 	}
 }
 

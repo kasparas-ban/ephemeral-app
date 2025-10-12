@@ -3,10 +3,6 @@ export type ServerEnvelope<T = unknown> = {
   data: T;
 };
 
-export type HelloAck = {
-  userId: string;
-};
-
 export type Presence = {
   users: { id: string }[];
 };
