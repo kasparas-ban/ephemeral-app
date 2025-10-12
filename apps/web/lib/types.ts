@@ -31,7 +31,6 @@ export type ClientEnvelope<T = unknown> = {
   data: T;
 };
 
-export type TypingStartMsg = { compositionId: string };
 export type TypingUpdateMsg = {
   compositionId: string;
   text: string;

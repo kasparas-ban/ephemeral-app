@@ -109,14 +109,6 @@ func (c *Client) handleMessage(data []byte) {
 	case "hello":
 		c.handleHello()
 
-	case "typing_start":
-		var msg TypingStartMessage
-		if err := json.Unmarshal(data, &msg); err != nil {
-			log.Printf("Error parsing typing_start: %v", err)
-			return
-		}
-		c.handleTypingStart(msg)
-
 	case "typing_update":
 		var msg TypingUpdateMessage
 		if err := json.Unmarshal(data, &msg); err != nil {
@@ -155,16 +147,6 @@ func (c *Client) handleHello() {
 	default:
 		log.Printf("Client %s send buffer full for hello_ack", c.userID)
 	}
-}
-
-func (c *Client) handleTypingStart(_ TypingStartMessage) {
-	broadcast := TypingStateMessage{
-		Type:       "typing_state",
-		FromUserID: c.userID,
-		Text:       "",
-		Ts:         nowMs(),
-	}
-	c.hub.BroadcastMessageExcept(c, broadcast)
 }
 
 func (c *Client) handleTypingUpdate(msg TypingUpdateMessage) {

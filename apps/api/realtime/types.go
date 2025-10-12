@@ -8,11 +8,6 @@ type HelloMessage struct {
 	Type string `json:"type"` // "hello"
 }
 
-type TypingStartMessage struct {
-	Type   string `json:"type"` // "typing_start"
-	UserID string `json:"userId"`
-}
-
 type TypingUpdateMessage struct {
 	Type   string `json:"type"` // "typing_update"
 	UserID string `json:"userId"`

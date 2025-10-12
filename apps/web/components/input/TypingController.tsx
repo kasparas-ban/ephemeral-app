@@ -6,7 +6,6 @@ import {
   Presence,
   TypingEnd,
   TypingEndMsg,
-  TypingStartMsg,
   TypingState,
   TypingUpdateMsg,
 } from "@/lib/types";
@@ -53,11 +52,6 @@ export default function TypingController() {
         return;
       if (compIdRef.current == null) {
         compIdRef.current = ulid();
-        const start: ClientEnvelope<TypingStartMsg> = {
-          type: "typing_start",
-          data: { compositionId: compIdRef.current },
-        };
-        wsRef.current.send(start);
       }
       if (e.key === "Enter" || e.key === "Escape") {
         const end: ClientEnvelope<TypingEndMsg> = {

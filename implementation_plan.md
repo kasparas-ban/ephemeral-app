@@ -20,14 +20,13 @@
 - Message schema (JSON over WS):
 - Client→Server:
   - `hello` {}
-  - `typing_start` { compositionId: string }
-  - `typing_update` { compositionId: string, seq: number, text: string }
-  - `typing_end` { compositionId: string, finalText?: string, ttlMs?: number }
+  - `typing_update` { text: string }
+  - `typing_end` { finalText?: string, ttlMs?: number }
 - Server→Client:
   - `hello_ack` { userId: string }
   - `presence` { users: Array<{ id: string }>, ts: number }
-  - `typing_state` { fromUserId: string, compositionId: string, seq: number, text: string, ts: number }
-  - `typing_end` { fromUserId: string, compositionId: string, finalText?: string, ts: number, ttlMs?: number }
+  - `typing_state` { fromUserId: string, text: string, ts: number }
+  - `typing_end` { fromUserId: string, finalText?: string, ts: number, ttlMs?: number }
 
 ## Frontend (Next.js, apps/web)
 
@@ -37,17 +36,17 @@
 - `apps/web/lib/spatial.ts` per-client layout utilities:
   - `getOrAssignPosition(userId: string): { x: number; y: number }` using a local session seed (e.g., from `crypto.getRandomValues()` persisted in memory or localStorage) so positions are stable for that client session only.
 - Input & typing stream:
-- `apps/web/components/input/TypingController.tsx` captures keystrokes (hidden input or canvas focus) and manages local composition state.
-- On first keypress: `typing_start` with new `compositionId` (e.g., ULID). On each key: `typing_update` with incrementing `seq` and full `text` (optionally coalesced every ~80–120ms).
+- `apps/web/components/input/TypingController.tsx` captures keystrokes (hidden input or canvas focus) and manages local per-user typing state.
+- On first keypress: begin an implicit per-user composition. Send `typing_update` with full `text` (optionally coalesced every ~80–120ms).
 - On Enter/Escape or inactivity (~1.5s): `typing_end`; start local fade.
 - Canvas & rendering (custom DOM canvas):
 - `apps/web/components/canvas/WorldCanvas.tsx` renders to `<canvas>` with `requestAnimationFrame`.
 - Pan (mouse drag/touch), zoom (wheel/pinch), camera matrix; world↔screen transforms; DPR scaling.
 - Initial camera centers on the current user's local position.
-- Render compositions per user:
+- Render per user:
   - Active: blinking caret at end; apply `typing_state` updates.
   - Ended: fade with TTL, then prune.
-- Keep per-user/per-composition state keyed by `{userId, compositionId}` with last applied `seq`.
+- Keep per-user state keyed by `userId`.
 - Presence rendering:
 - From `presence.users`, compute per-user positions using the local mapping and render markers/cursors at those world coordinates.
 - Ephemerality:
@@ -83,7 +82,7 @@
 ## Risks & mitigations
 
 - Views differ per client by design: acceptable and may enhance the “ephemeral thoughts” feel.
-- Ordering: per-composition `seq`; ignore stale.
+- Ordering: no sequence numbers; apply latest by `ts` (server-stamped).
 - Burst traffic: coalesce updates; compression; backpressure skipping.
 
 ## To-dos
