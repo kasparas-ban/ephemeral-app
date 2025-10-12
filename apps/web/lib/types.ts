@@ -14,7 +14,6 @@ export type Presence = {
 export type TypingState = {
   fromUserId: string;
   compositionId: string;
-  seq: number;
   text: string;
   ts: number;
 };
@@ -35,7 +34,6 @@ export type ClientEnvelope<T = unknown> = {
 export type TypingStartMsg = { compositionId: string };
 export type TypingUpdateMsg = {
   compositionId: string;
-  seq: number;
   text: string;
 };
 export type TypingEndMsg = {

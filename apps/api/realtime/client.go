@@ -157,11 +157,10 @@ func (c *Client) handleHello() {
 	}
 }
 
-func (c *Client) handleTypingStart(msg TypingStartMessage) {
+func (c *Client) handleTypingStart(_ TypingStartMessage) {
 	broadcast := TypingStateMessage{
 		Type:       "typing_state",
 		FromUserID: c.userID,
-		Seq:        0,
 		Text:       "",
 		Ts:         nowMs(),
 	}
@@ -177,7 +176,6 @@ func (c *Client) handleTypingUpdate(msg TypingUpdateMessage) {
 	broadcast := TypingStateMessage{
 		Type:       "typing_state",
 		FromUserID: c.userID,
-		Seq:        msg.Seq,
 		Text:       msg.Text,
 		Ts:         nowMs(),
 	}

@@ -1,17 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import {
   ClientEnvelope,
-  TypingEndMsg,
-  TypingStartMsg,
-  TypingUpdateMsg,
-  TypingEnd,
-  TypingState,
   HelloAck,
   Presence,
+  TypingEnd,
+  TypingEndMsg,
+  TypingStartMsg,
+  TypingState,
+  TypingUpdateMsg,
 } from "@/lib/types";
 import { WSClient } from "@/lib/ws";
+import { useEffect, useRef, useState } from "react";
 
 function ulid() {
   // lightweight ULID-like
@@ -21,7 +21,6 @@ function ulid() {
 export default function TypingController() {
   const [userId, setUserId] = useState<string | null>(null);
   const wsRef = useRef<WSClient | null>(null);
-  const seqRef = useRef<number>(0);
   const compIdRef = useRef<string | null>(null);
   const bufferRef = useRef<string>("");
   const flushTimer = useRef<number | null>(null);
@@ -54,7 +53,6 @@ export default function TypingController() {
         return;
       if (compIdRef.current == null) {
         compIdRef.current = ulid();
-        seqRef.current = 0;
         const start: ClientEnvelope<TypingStartMsg> = {
           type: "typing_start",
           data: { compositionId: compIdRef.current },
@@ -86,7 +84,6 @@ export default function TypingController() {
           type: "typing_update",
           data: {
             compositionId: compIdRef.current!,
-            seq: ++seqRef.current,
             text: bufferRef.current,
           },
         };

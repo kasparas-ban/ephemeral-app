@@ -16,7 +16,6 @@ type TypingStartMessage struct {
 type TypingUpdateMessage struct {
 	Type   string `json:"type"` // "typing_update"
 	UserID string `json:"userId"`
-	Seq    int    `json:"seq"`
 	Text   string `json:"text"`
 }
 
@@ -46,7 +45,6 @@ type PresenceMessage struct {
 type TypingStateMessage struct {
 	Type       string `json:"type"` // "typing_state"
 	FromUserID string `json:"fromUserId"`
-	Seq        int    `json:"seq"`
 	Text       string `json:"text"`
 	Ts         int64  `json:"ts"`
 }

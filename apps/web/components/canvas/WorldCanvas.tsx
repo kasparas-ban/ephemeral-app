@@ -1,15 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Camera, worldToScreen } from "@/lib/spatial";
+import { Camera } from "@/lib/spatial";
 import { TypingEnd, TypingState } from "@/lib/types";
+import { useEffect, useRef, useState } from "react";
 
 type CompositionKey = string; // `${userId}:${compositionId}`
 
 type ActiveComp = {
   userId: string;
   compositionId: string;
-  seq: number;
   text: string;
   ts: number;
   ended?: { ts: number; ttlMs: number };
@@ -26,11 +25,10 @@ export default function WorldCanvas() {
     applyTypingState: (m: TypingState) => {
       const key = `${m.fromUserId}:${m.compositionId}`;
       const existing = compsRef.current.get(key);
-      if (!existing || m.seq >= existing.seq) {
+      {
         compsRef.current.set(key, {
           userId: m.fromUserId,
           compositionId: m.compositionId,
-          seq: m.seq,
           text: m.text,
           ts: m.ts,
           ended: existing?.ended,
@@ -47,7 +45,6 @@ export default function WorldCanvas() {
         compsRef.current.set(key, {
           userId: m.fromUserId,
           compositionId: m.compositionId,
-          seq: 0,
           text: m.finalText ?? "",
           ts: m.ts,
           ended: { ts: m.ts, ttlMs: ttl },
