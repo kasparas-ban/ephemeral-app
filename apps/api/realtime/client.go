@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
@@ -22,7 +23,9 @@ type Client struct {
 	send   chan []byte
 }
 
-func NewClient(hub *Hub, conn *websocket.Conn, userID string) *Client {
+func NewClient(hub *Hub, conn *websocket.Conn) *Client {
+	userID := uuid.New().String()
+
 	return &Client{
 		userID: userID,
 		hub:    hub,
@@ -163,7 +166,7 @@ func (c *Client) handleTypingStart(msg TypingStartMessage) {
 		Text:          "",
 		Ts:            nowMs(),
 	}
-	c.hub.BroadcastMessage(broadcast)
+	c.hub.BroadcastMessageExcept(c, broadcast)
 }
 
 func (c *Client) handleTypingUpdate(msg TypingUpdateMessage) {
@@ -180,7 +183,7 @@ func (c *Client) handleTypingUpdate(msg TypingUpdateMessage) {
 		Text:          msg.Text,
 		Ts:            nowMs(),
 	}
-	c.hub.BroadcastMessage(broadcast)
+	c.hub.BroadcastMessageExcept(c, broadcast)
 }
 
 func (c *Client) handleTypingEnd(msg TypingEndMessage) {
@@ -192,5 +195,5 @@ func (c *Client) handleTypingEnd(msg TypingEndMessage) {
 		Ts:            nowMs(),
 		TTLMs:         msg.TTLMs,
 	}
-	c.hub.BroadcastMessage(broadcast)
+	c.hub.BroadcastMessageExcept(c, broadcast)
 }

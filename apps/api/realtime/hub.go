@@ -39,7 +39,7 @@ func (h *Hub) Run() {
 			h.clients[client] = true
 			h.mu.Unlock()
 			log.Printf("Client registered: %s (total: %d)", client.userID, len(h.clients))
-			h.broadcastPresence()
+			h.broadcastPresenceExcept(client)
 
 		case client := <-h.unregister:
 			h.mu.Lock()
@@ -49,7 +49,7 @@ func (h *Hub) Run() {
 				log.Printf("Client unregistered: %s (total: %d)", client.userID, len(h.clients))
 			}
 			h.mu.Unlock()
-			h.broadcastPresence()
+			h.broadcastPresenceExcept(client)
 
 		case message := <-h.broadcast:
 			h.mu.RLock()
@@ -65,7 +65,7 @@ func (h *Hub) Run() {
 	}
 }
 
-func (h *Hub) broadcastPresence() {
+func (h *Hub) broadcastPresenceExcept(exclude *Client) {
 	h.mu.RLock()
 	users := make([]PresenceUser, 0, len(h.clients))
 	for client := range h.clients {
@@ -84,14 +84,37 @@ func (h *Hub) broadcastPresence() {
 		return
 	}
 
-	h.broadcast <- data
+	h.mu.RLock()
+	for client := range h.clients {
+		if client == exclude {
+			continue
+		}
+		select {
+		case client.send <- data:
+		default:
+			log.Printf("Client %s send buffer full, skipping message", client.userID)
+		}
+	}
+	h.mu.RUnlock()
 }
 
-func (h *Hub) BroadcastMessage(msg any) {
+func (h *Hub) BroadcastMessageExcept(sender *Client, msg any) {
 	data, err := json.Marshal(msg)
 	if err != nil {
 		log.Printf("Error marshaling message: %v", err)
 		return
 	}
-	h.broadcast <- data
+
+	h.mu.RLock()
+	for client := range h.clients {
+		if client == sender {
+			continue
+		}
+		select {
+		case client.send <- data:
+		default:
+			log.Printf("Client %s send buffer full, skipping message", client.userID)
+		}
+	}
+	h.mu.RUnlock()
 }

@@ -9,7 +9,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/joho/godotenv"
 )
@@ -60,8 +59,7 @@ func main() {
 			return
 		}
 
-		userID := uuid.New().String()
-		client := realtime.NewClient(hub, conn, userID)
+		client := realtime.NewClient(hub, conn)
 		hub.Register(client)
 
 		go client.WritePump()
