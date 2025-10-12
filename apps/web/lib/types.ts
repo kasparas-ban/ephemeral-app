@@ -9,7 +9,6 @@ export type HelloAck = {
 
 export type Presence = {
   users: { id: string }[];
-  ts: number;
 };
 
 export type TypingState = {

@@ -4,12 +4,10 @@ import (
 	"encoding/json"
 	"log"
 	"sync"
-	"time"
 )
 
 const (
-	PresenceBroadcastInterval = 30 * time.Second
-	MaxCompositionLength      = 1000
+	MaxCompositionLength = 1000
 )
 
 type Hub struct {
@@ -34,9 +32,6 @@ func (h *Hub) Register(client *Client) {
 }
 
 func (h *Hub) Run() {
-	presenceTicker := time.NewTicker(PresenceBroadcastInterval)
-	defer presenceTicker.Stop()
-
 	for {
 		select {
 		case client := <-h.register:
@@ -66,9 +61,6 @@ func (h *Hub) Run() {
 				}
 			}
 			h.mu.RUnlock()
-
-		case <-presenceTicker.C:
-			h.broadcastPresence()
 		}
 	}
 }
@@ -84,7 +76,6 @@ func (h *Hub) broadcastPresence() {
 	presence := PresenceMessage{
 		Type:  "presence",
 		Users: users,
-		Ts:    nowMs(),
 	}
 
 	data, err := json.Marshal(presence)
@@ -96,7 +87,7 @@ func (h *Hub) broadcastPresence() {
 	h.broadcast <- data
 }
 
-func (h *Hub) BroadcastMessage(msg interface{}) {
+func (h *Hub) BroadcastMessage(msg any) {
 	data, err := json.Marshal(msg)
 	if err != nil {
 		log.Printf("Error marshaling message: %v", err)

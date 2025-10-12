@@ -39,9 +39,8 @@ type PresenceUser struct {
 }
 
 type PresenceMessage struct {
-	Type  string          `json:"type"` // "presence"
+	Type  string         `json:"type"` // "presence"
 	Users []PresenceUser `json:"users"`
-	Ts    int64           `json:"ts"`
 }
 
 type TypingStateMessage struct {
