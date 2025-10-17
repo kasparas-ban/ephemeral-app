@@ -20,13 +20,13 @@
 - Message schema (JSON over WS):
 - Client→Server:
   - `hello` {}
-  - `typing_update` { text: string }
-  - `typing_end` { finalText?: string, ttlMs?: number }
+  - `typing_update` { type: "typing_update", userId: string, char: string }
+  - `typing_clear` { type: "typing_clear", userId: string }
 - Server→Client:
   - `hello_ack` { userId: string }
-  - `presence` { users: Array<{ id: string }>, ts: number }
-  - `typing_state` { fromUserId: string, text: string, ts: number }
-  - `typing_end` { fromUserId: string, finalText?: string, ts: number, ttlMs?: number }
+  - `presence` { users: { id: string }[] }
+  - `typing_update` { type: "typing_update", userId: string, char: string }
+  - `typing_clear` { type: "typing_clear", userId: string }
 
 ## Frontend (Next.js, apps/web)
 

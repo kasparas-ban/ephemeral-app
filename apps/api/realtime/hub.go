@@ -6,10 +6,6 @@ import (
 	"sync"
 )
 
-const (
-	MaxCompositionLength = 1000
-)
-
 type Hub struct {
 	clients    map[*Client]bool
 	broadcast  chan []byte

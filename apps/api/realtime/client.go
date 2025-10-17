@@ -114,13 +114,13 @@ func (c *Client) handleMessage(data []byte) {
 		}
 		c.handleTypingUpdate(msg)
 
-	case "typing_end":
-		var msg TypingEndMessage
+	case "typing_clear":
+		var msg TypingClearMessage
 		if err := json.Unmarshal(data, &msg); err != nil {
-			log.Printf("Error parsing typing_end: %v", err)
+			log.Printf("Error parsing typing_clear: %v", err)
 			return
 		}
-		c.handleTypingEnd(msg)
+		c.handleTypingClear()
 
 	default:
 		log.Printf("Unknown message type from %s: %s", c.userID, baseMsg.Type)
@@ -128,27 +128,18 @@ func (c *Client) handleMessage(data []byte) {
 }
 
 func (c *Client) handleTypingUpdate(msg TypingUpdateMessage) {
-	if len(msg.Text) > MaxCompositionLength {
-		log.Printf("Text too long from %s: %d chars", c.userID, len(msg.Text))
-		return
-	}
-
-	broadcast := TypingStateMessage{
-		Type:       "typing_state",
-		FromUserID: c.userID,
-		Text:       msg.Text,
-		Ts:         nowMs(),
+	broadcast := TypingUpdateMessage{
+		Type:   "typing_update",
+		UserID: c.userID,
+		Char:   msg.Char,
 	}
 	c.hub.BroadcastMessageExcept(c, broadcast)
 }
 
-func (c *Client) handleTypingEnd(msg TypingEndMessage) {
-	broadcast := TypingEndBroadcast{
-		Type:       "typing_end",
-		FromUserID: c.userID,
-		FinalText:  msg.FinalText,
-		Ts:         nowMs(),
-		TTLMs:      msg.TTLMs,
+func (c *Client) handleTypingClear() {
+	broadcast := TypingClearMessage{
+		Type:   "typing_clear",
+		UserID: c.userID,
 	}
 	c.hub.BroadcastMessageExcept(c, broadcast)
 }
