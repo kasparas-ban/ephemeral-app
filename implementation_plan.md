@@ -10,7 +10,7 @@
 
 ## Backend (Go, apps/api)
 
-- WebSocket endpoint `GET /ws` in `apps/api/main.go` using `net/http` + `github.com/gorilla/websocket`.
+- WebSocket endpoint `GET /connect` in `apps/api/main.go` using `net/http` + `github.com/gorilla/websocket`.
 - Lightweight hub to track connections and broadcast presence + typing:
 - Files: `apps/api/realtime/hub.go`, `apps/api/realtime/client.go`, `apps/api/realtime/types.go`.
 - Maintain a set/map of clients and assigned `userId`. No positions, no nicknames, no history.
@@ -31,7 +31,7 @@
 ## Frontend (Next.js, apps/web)
 
 - Networking:
-- `apps/web/lib/ws.ts` connect to `/ws`, auto-reconnect, typed handlers.
+- `apps/web/lib/ws.ts` connect to `/connect`, auto-reconnect, typed handlers.
 - `apps/web/lib/types.ts` shared message types.
 - `apps/web/lib/spatial.ts` per-client layout utilities:
   - `getOrAssignPosition(userId: string): { x: number; y: number }` using a local session seed (e.g., from `crypto.getRandomValues()` persisted in memory or localStorage) so positions are stable for that client session only.
@@ -63,9 +63,9 @@
 ## Dev wiring & config
 
 - Local dev:
-- Go API at `http://localhost:8080/ws`.
+- Go API at `http://localhost:8080/connect`.
 - Next at `http://localhost:3000`.
-- Next rewrite in `apps/web/next.config.ts` for `/ws` → `http://localhost:8080/ws`; connect using relative `/ws`.
+- Next rewrite in `apps/web/next.config.ts` for `/connect` → `http://localhost:8080/connect`; connect using relative `/connect`.
 - Scripts: run both concurrently via Turbo (`turbo run dev`) or two terminals.
 
 ## Milestones
@@ -87,7 +87,7 @@
 
 ## To-dos
 
-- [ ] Add /ws endpoint with `net/http` + Gorilla WebSocket
+- [ ] Add /connect endpoint with `net/http` + Gorilla WebSocket
 - [ ] Implement hub to track clients, assign IDs, broadcast presence (IDs only)
 - [ ] Relay typing events: start/update/end with broadcast to all
 - [ ] Add ping/pong heartbeats and stale client cleanup
@@ -96,5 +96,5 @@
 - [ ] Implement per-client id→position mapping util (no shared seed)
 - [ ] Implement TypingController to capture input and send updates
 - [ ] Render active/ended compositions with caret and fade lifecycle
-- [ ] Add Next rewrite for /ws and dev scripts
+- [ ] Add Next rewrite for /connect and dev scripts
 - [ ] DPI scaling, text metrics cache, max visible thoughts

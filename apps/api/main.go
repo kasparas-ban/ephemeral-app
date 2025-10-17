@@ -19,7 +19,7 @@ func checkOrigin(r *http.Request) bool {
 		return false
 	}
 
-	// Allow explicit list via env (use SplitSeq to avoid slice allocation)
+	// Allow explicit list via env
 	for a := range strings.SplitSeq(os.Getenv("ALLOWED_ORIGINS"), ",") {
 		if strings.TrimSpace(a) == origin {
 			return true
@@ -52,7 +52,7 @@ func main() {
 		}
 	})
 
-	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/connect", func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			log.Printf("WebSocket upgrade failed: %v", err)

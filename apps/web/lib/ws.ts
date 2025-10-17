@@ -20,7 +20,7 @@ export class WSClient {
   private url =
     (typeof location !== "undefined"
       ? (location.protocol === "https:" ? "wss://" : "ws://") + location.host
-      : "ws://localhost:3000") + "/ws";
+      : "ws://localhost:3000") + "/connect";
   private reconnectDelayMs = 500;
   private handlers: Handlers;
 
