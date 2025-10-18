@@ -43,8 +43,9 @@ func (h *Hub) Run() {
 				delete(h.clients, client)
 				close(client.send)
 				log.Printf("Client unregistered: %s (total: %d)", client.userID, len(h.clients))
+
+				h.broadcastPresenceExcept(client)
 			}
-			h.broadcastPresenceExcept(client)
 
 		case req := <-h.broadcast:
 			for client := range h.clients {

@@ -225,3 +225,75 @@ func TestHub_PresenceSkipsClientsWithFullBuffer(t *testing.T) {
 		t.Fatalf("expected no presence message for newly registered client, got %s", string(raw))
 	}
 }
+
+func TestHub_UnregisterUnknownClientDoesNothing(t *testing.T) {
+	h := NewHub()
+	go h.Run()
+
+	existing := newTestClient(h, "existing", 10)
+	h.Register(existing)
+	drainChannel(existing.send)
+
+	ghost := newTestClient(h, "ghost", 10)
+
+	h.unregister <- ghost
+
+	// Give the hub time to process the unregister request.
+	time.Sleep(20 * time.Millisecond)
+
+	select {
+	case _, ok := <-ghost.send:
+		if !ok {
+			t.Fatalf("expected send channel for unknown client to remain open")
+		}
+	default:
+	}
+
+	if raw := readWithTimeout(existing.send, 100*time.Millisecond); raw != nil {
+		t.Fatalf("expected no presence update when unregistering unknown client, got %s", string(raw))
+	}
+}
+
+func TestHub_BroadcastMessageExceptSkipsFullBuffers(t *testing.T) {
+	h := NewHub()
+	go h.Run()
+
+	sender := newTestClient(h, "sender", 10)
+	blocked := newTestClient(h, "blocked", 1)
+	open := newTestClient(h, "open", 10)
+
+	h.Register(sender)
+	h.Register(blocked)
+	h.Register(open)
+
+	// Drain any presence traffic before assertions.
+	drainChannel(sender.send)
+	drainChannel(blocked.send)
+	drainChannel(open.send)
+
+	blocked.send <- []byte("sentinel")
+
+	payload := map[string]any{
+		"type": "custom",
+		"body": "hello",
+	}
+
+	h.BroadcastMessageExcept(sender, payload)
+
+	if raw := readWithTimeout(open.send, 200*time.Millisecond); raw == nil {
+		t.Fatalf("expected broadcast for open client, got none")
+	}
+
+	select {
+	case msg := <-blocked.send:
+		if string(msg) != "sentinel" {
+			t.Fatalf("expected sentinel message to remain for blocked client, got %s", string(msg))
+		}
+	default:
+		// If the channel were cleared, the sentinel would have been consumed.
+	}
+
+	if raw := readWithTimeout(sender.send, 150*time.Millisecond); raw != nil {
+		t.Fatalf("expected sender not to receive broadcast, got %s", string(raw))
+	}
+}

@@ -29,6 +29,31 @@ func checkOrigin(r *http.Request) bool {
 	return false
 }
 
+func healthHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
+			log.Printf("Error encoding health response: %v", err)
+		}
+	})
+}
+
+func websocketHandler(hub *realtime.Hub) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			log.Printf("WebSocket upgrade failed: %v", err)
+			return
+		}
+
+		client := realtime.NewClient(hub, conn)
+		hub.Register(client)
+
+		go client.WritePump()
+		go client.ReadPump()
+	})
+}
+
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:    1024,
 	WriteBufferSize:   1024,
@@ -45,26 +70,8 @@ func main() {
 	hub := realtime.NewHub()
 	go hub.Run()
 
-	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
-			log.Printf("Error encoding health response: %v", err)
-		}
-	})
-
-	http.HandleFunc("/connect", func(w http.ResponseWriter, r *http.Request) {
-		conn, err := upgrader.Upgrade(w, r, nil)
-		if err != nil {
-			log.Printf("WebSocket upgrade failed: %v", err)
-			return
-		}
-
-		client := realtime.NewClient(hub, conn)
-		hub.Register(client)
-
-		go client.WritePump()
-		go client.ReadPump()
-	})
+	http.Handle("/health", healthHandler())
+	http.Handle("/connect", websocketHandler(hub))
 
 	port := os.Getenv("PORT")
 	if port == "" {

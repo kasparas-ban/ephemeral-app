@@ -2,9 +2,17 @@ package realtime
 
 import (
 	"encoding/json"
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/gorilla/websocket"
 )
+
+var errWebsocketTimeout = errors.New("timeout waiting for websocket message")
 
 // readWithTimeout returns the next message from ch or nil if the timeout elapses.
 func readWithTimeout(ch <-chan []byte, d time.Duration) []byte {
@@ -13,6 +21,73 @@ func readWithTimeout(ch <-chan []byte, d time.Duration) []byte {
 		return b
 	case <-time.After(d):
 		return nil
+	}
+}
+
+type wsPair struct {
+	client *websocket.Conn
+	server *websocket.Conn
+	close  func()
+}
+
+func newWebsocketPair(t *testing.T) wsPair {
+	t.Helper()
+
+	serverConnCh := make(chan *websocket.Conn, 1)
+
+	upgrader := websocket.Upgrader{
+		CheckOrigin: func(*http.Request) bool { return true },
+	}
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			t.Fatalf("upgrade websocket: %v", err)
+		}
+		serverConnCh <- conn
+	}))
+
+	dialURL := "ws" + strings.TrimPrefix(srv.URL, "http")
+
+	clientConn, _, err := websocket.DefaultDialer.Dial(dialURL, nil)
+	if err != nil {
+		srv.Close()
+		t.Fatalf("dial websocket: %v", err)
+	}
+
+	serverConn := <-serverConnCh
+
+	return wsPair{
+		client: clientConn,
+		server: serverConn,
+		close: func() {
+			clientConn.Close()
+			serverConn.Close()
+			srv.Close()
+		},
+	}
+}
+
+func readWSMessage(t *testing.T, conn *websocket.Conn, timeout time.Duration) (int, []byte, error) {
+	t.Helper()
+
+	type result struct {
+		messageType int
+		payload     []byte
+		err         error
+	}
+
+	ch := make(chan result, 1)
+	go func() {
+		mt, payload, err := conn.ReadMessage()
+		ch <- result{messageType: mt, payload: payload, err: err}
+	}()
+
+	select {
+	case res := <-ch:
+		return res.messageType, res.payload, res.err
+	case <-time.After(timeout):
+		return -1, nil, errWebsocketTimeout
 	}
 }
 
@@ -147,5 +222,119 @@ func TestClient_handleMessage_invalidJSONDoesNotPanicOrBroadcast(t *testing.T) {
 	got := readWithTimeout(receiver.send, 150*time.Millisecond)
 	if got != nil {
 		t.Fatalf("expected no broadcast, got %s", string(got))
+	}
+}
+
+func TestClient_ReadPumpDispatchesAndUnregistersOnClose(t *testing.T) {
+	pair := newWebsocketPair(t)
+	defer pair.close()
+
+	h := NewHub()
+	go h.Run()
+
+	receiver := newTestClient(h, "receiver", 10)
+	h.Register(receiver)
+	// Drain any presence broadcasts targeting receiver.
+	readWithTimeout(receiver.send, 50*time.Millisecond)
+
+	client := NewClient(h, pair.server)
+	h.Register(client)
+
+	// Drain presence message that receiver observes after registering client.
+	readWithTimeout(receiver.send, 50*time.Millisecond)
+
+	done := make(chan struct{})
+	go func() {
+		client.ReadPump()
+		close(done)
+	}()
+
+	payload := map[string]any{
+		"type": "typing_update",
+		"char": "z",
+	}
+	if err := pair.client.WriteJSON(payload); err != nil {
+		t.Fatalf("write json: %v", err)
+	}
+
+	raw := readWithTimeout(receiver.send, 200*time.Millisecond)
+	if raw == nil {
+		t.Fatalf("expected broadcast for receiver, got none")
+	}
+
+	var msg TypingUpdateMessage
+	if err := json.Unmarshal(raw, &msg); err != nil {
+		t.Fatalf("unmarshal broadcast: %v", err)
+	}
+
+	if msg.Char != "z" {
+		t.Fatalf("expected char 'z', got %q", msg.Char)
+	}
+	if msg.UserID != client.userID {
+		t.Fatalf("expected broadcast from %q, got %q", client.userID, msg.UserID)
+	}
+
+	// Closing the client-side websocket should cause ReadPump to exit and trigger unregister.
+	pair.client.Close()
+
+	select {
+	case <-done:
+	case <-time.After(500 * time.Millisecond):
+		t.Fatalf("ReadPump did not exit after websocket close")
+	}
+
+	select {
+	case _, ok := <-client.send:
+		if ok {
+			t.Fatalf("expected client send channel to be closed after unregister")
+		}
+	case <-time.After(200 * time.Millisecond):
+		t.Fatalf("timeout waiting for client send channel to close")
+	}
+}
+
+func TestClient_WritePumpFlushesAndClosesConnection(t *testing.T) {
+	pair := newWebsocketPair(t)
+	defer pair.close()
+
+	client := &Client{
+		userID: "writer",
+		hub:    nil,
+		conn:   pair.server,
+		send:   make(chan []byte, 2),
+	}
+
+	done := make(chan struct{})
+	go func() {
+		client.WritePump()
+		close(done)
+	}()
+
+	payload := []byte(`{"type":"buffered"}`)
+	client.send <- payload
+
+	msgType, raw, err := readWSMessage(t, pair.client, 200*time.Millisecond)
+	if err != nil {
+		t.Fatalf("read websocket message: %v", err)
+	}
+	if msgType != websocket.TextMessage {
+		t.Fatalf("expected text message, got %d", msgType)
+	}
+	if string(raw) != string(payload) {
+		t.Fatalf("unexpected payload: %s", string(raw))
+	}
+
+	close(client.send)
+
+	select {
+	case <-done:
+	case <-time.After(500 * time.Millisecond):
+		t.Fatalf("WritePump did not exit after send channel closed")
+	}
+
+	if _, _, err := readWSMessage(t, pair.client, 200*time.Millisecond); err == nil {
+		t.Fatalf("expected websocket close, got none")
+	} else if errors.Is(err, errWebsocketTimeout) {
+		t.Fatalf("expected websocket close, timed out instead")
 	}
 }
