@@ -30,7 +30,7 @@ func NewClient(hub *Hub, conn *websocket.Conn) *Client {
 		userID: userID,
 		hub:    hub,
 		conn:   conn,
-		send:   make(chan []byte, 256),
+		send:   make(chan []byte, 32),
 	}
 }
 
