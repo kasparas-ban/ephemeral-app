@@ -2,9 +2,18 @@ import {
   ClientEnvelope,
   Presence,
   ServerEnvelope,
-  TypingClear,
-  TypingUpdate,
+  TypingEnd,
+  TypingState,
 } from "./types";
+
+type Handlers = {
+  presence?: (msg: Presence) => void;
+  typingState?: (msg: TypingState) => void;
+  typingEnd?: (msg: TypingEnd) => void;
+  open?: () => void;
+  close?: () => void;
+  error?: (e: Event) => void;
+};
 
 export class WSClient {
   private ws: WebSocket | null = null;
@@ -13,45 +22,40 @@ export class WSClient {
       ? (location.protocol === "https:" ? "wss://" : "ws://") + location.host
       : "ws://localhost:3000") + "/connect";
   private reconnectDelayMs = 500;
+  private handlers: Handlers;
 
-  constructor() {}
+  constructor(handlers: Handlers) {
+    this.handlers = handlers;
+  }
 
   connect() {
     const ws = new WebSocket(this.url);
-
     this.ws = ws;
     ws.onopen = () => {
       this.reconnectDelayMs = 500;
+      this.handlers.open?.();
     };
-
     ws.onclose = () => {
+      this.handlers.close?.();
       setTimeout(() => this.connect(), this.reconnectDelayMs);
       this.reconnectDelayMs = Math.min(8000, this.reconnectDelayMs * 2);
     };
-
-    ws.onerror = (e) => {
-      console.error("WebSocket error", e);
-    };
-
+    ws.onerror = (e) => this.handlers.error?.(e);
     ws.onmessage = (ev) => {
       try {
-        const msg = JSON.parse(ev.data as string) as ServerEnvelope<
-          Presence | TypingUpdate | TypingClear
-        >;
+        const msg = JSON.parse(ev.data as string) as ServerEnvelope<any>;
         switch (msg.type) {
           case "presence":
-            console.log("presence", msg.data);
+            this.handlers.presence?.(msg.data as Presence);
             break;
-          case "typing_update":
-            console.log("typing_update", msg.data);
+          case "typing_state":
+            this.handlers.typingState?.(msg.data as TypingState);
             break;
-          case "typing_clear":
-            console.log("typing_clear", msg.data);
+          case "typing_end":
+            this.handlers.typingEnd?.(msg.data as TypingEnd);
             break;
         }
-      } catch (e) {
-        console.error("Error parsing message", e);
-      }
+      } catch {}
     };
   }
 

@@ -8,7 +8,7 @@ import {
   TypingState,
   TypingUpdateMsg,
 } from "@/lib/types";
-import { WSClient } from "@/lib/ws";
+import { WSClient } from "@/lib/ws_old";
 import { useEffect, useRef } from "react";
 
 function ulid() {
