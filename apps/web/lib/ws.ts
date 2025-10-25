@@ -1,8 +1,8 @@
 import { setConnectedUsers } from "@/stores/stores";
 import {
-  ClientEnvelope,
-  Presence,
-  ServerEnvelope,
+  ClientMessage,
+  ServerMessage,
+  TypingBack,
   TypingClear,
   TypingUpdate,
 } from "./types";
@@ -36,12 +36,10 @@ export class WSClient {
 
     ws.onmessage = (ev) => {
       try {
-        const msg = JSON.parse(ev.data as string) as ServerEnvelope<
-          Presence | TypingUpdate | TypingClear
-        >;
+        const msg = JSON.parse(ev.data as string) as ServerMessage;
 
         if (msg.type === "presence") {
-          setConnectedUsers((msg.data as Presence).users);
+          setConnectedUsers(msg.users);
         }
       } catch (e) {
         console.error("Error parsing message", e);
@@ -51,25 +49,27 @@ export class WSClient {
 
   setHandlers(
     typingUpdateHandler: (t: TypingUpdate) => void,
-    typingClearHandler: (t: TypingClear) => void
+    typingClearHandler: (t: TypingClear) => void,
+    typingBackHandler?: (t: TypingBack) => void
   ) {
     if (!this.ws) return;
 
     this.ws.onmessage = (ev) => {
       try {
-        const msg = JSON.parse(ev.data as string) as ServerEnvelope<
-          Presence | TypingUpdate | TypingClear
-        >;
+        const msg = JSON.parse(ev.data as string) as ServerMessage;
 
         switch (msg.type) {
           case "presence":
-            setConnectedUsers((msg.data as Presence).users);
+            setConnectedUsers(msg.users);
             break;
           case "typing_update":
-            typingUpdateHandler(msg.data as TypingUpdate);
+            typingUpdateHandler(msg as TypingUpdate);
             break;
           case "typing_clear":
-            typingClearHandler(msg.data as TypingClear);
+            typingClearHandler(msg as TypingClear);
+            break;
+          case "typing_back":
+            typingBackHandler?.(msg as TypingBack);
             break;
         }
       } catch (e) {
@@ -78,7 +78,7 @@ export class WSClient {
     };
   }
 
-  send<T>(payload: ClientEnvelope<T>) {
+  send(payload: ClientMessage) {
     const s = JSON.stringify(payload);
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       if (this.ws.bufferedAmount > 256 * 1024) return; // backpressure guard

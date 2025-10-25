@@ -192,6 +192,37 @@ func TestClient_handleMessage_typingClearBroadcastsToOthers(t *testing.T) {
 	}
 }
 
+func TestClient_handleMessage_typingBackBroadcastsToOthers(t *testing.T) {
+	_, sender, receiver := setupHubWithClients(t)
+
+	payload := map[string]any{
+		"type": "typing_back",
+	}
+	data, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	sender.handleMessage(data)
+
+	got := readWithTimeout(receiver.send, 200*time.Millisecond)
+	if got == nil {
+		t.Fatalf("expected a broadcast message, got none")
+	}
+
+	var msg TypingBackMessage
+	if err := json.Unmarshal(got, &msg); err != nil {
+		t.Fatalf("unmarshal broadcast: %v", err)
+	}
+
+	if msg.Type != "typing_back" {
+		t.Fatalf("expected type typing_back, got %q", msg.Type)
+	}
+	if msg.UserID != sender.userID {
+		t.Fatalf("expected userId %q, got %q", sender.userID, msg.UserID)
+	}
+}
+
 func TestClient_handleMessage_unknownTypeDoesNotBroadcast(t *testing.T) {
 	_, sender, receiver := setupHubWithClients(t)
 

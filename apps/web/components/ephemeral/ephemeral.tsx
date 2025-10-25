@@ -5,6 +5,11 @@ import { atom, useSetAtom } from "jotai";
 import AnimatedText from "./animated-text";
 import { cn } from "@/lib/utils";
 import styles from "./styles.module.css";
+import { WSClient } from "@/lib/ws";
+
+type EphemeralHandlers = {
+  onInput?: WSClient["send"];
+};
 
 const text = atom("");
 
@@ -12,7 +17,11 @@ const CHAR_WIDTH = 12.24; // px
 const LINE_CHAR_LIMIT = 15;
 const CARET_IDLE_DELAY = 100; // ms to wait after last input before blinking resumes
 
-export default function Ephemeral() {
+export default function Ephemeral({
+  handlers,
+}: {
+  handlers?: EphemeralHandlers;
+}) {
   const editableRef = useRef<HTMLDivElement>(null);
   const textContainerRef = useRef<HTMLDivElement>(null);
   const animatorRef = useRef<AnimatedText | null>(null);
@@ -48,12 +57,16 @@ export default function Ephemeral() {
       animatorRef.current.blurAll();
       setText("");
       showCaretWhileTyping();
+
+      handlers?.onInput?.({ type: "typing_clear" });
       return;
     }
 
     if (inputEvent.inputType === "deleteContentBackward") {
       animatorRef.current.deleteChar();
       showCaretWhileTyping();
+
+      handlers?.onInput?.({ type: "typing_back" });
       return;
     }
 
@@ -61,6 +74,7 @@ export default function Ephemeral() {
 
     setText((prev) => prev + char);
     animatorRef.current.addChar(char);
+    handlers?.onInput?.({ type: "typing_update", char });
 
     showCaretWhileTyping();
   };
