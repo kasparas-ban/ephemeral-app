@@ -1,3 +1,4 @@
+import { setConnectedUsers } from "@/stores/stores";
 import {
   ClientEnvelope,
   Presence,
@@ -38,15 +39,37 @@ export class WSClient {
         const msg = JSON.parse(ev.data as string) as ServerEnvelope<
           Presence | TypingUpdate | TypingClear
         >;
+
+        if (msg.type === "presence") {
+          setConnectedUsers((msg.data as Presence).users);
+        }
+      } catch (e) {
+        console.error("Error parsing message", e);
+      }
+    };
+  }
+
+  setHandlers(
+    typingUpdateHandler: (t: TypingUpdate) => void,
+    typingClearHandler: (t: TypingClear) => void
+  ) {
+    if (!this.ws) return;
+
+    this.ws.onmessage = (ev) => {
+      try {
+        const msg = JSON.parse(ev.data as string) as ServerEnvelope<
+          Presence | TypingUpdate | TypingClear
+        >;
+
         switch (msg.type) {
           case "presence":
-            console.log("presence", msg.data);
+            setConnectedUsers((msg.data as Presence).users);
             break;
           case "typing_update":
-            console.log("typing_update", msg.data);
+            typingUpdateHandler(msg.data as TypingUpdate);
             break;
           case "typing_clear":
-            console.log("typing_clear", msg.data);
+            typingClearHandler(msg.data as TypingClear);
             break;
         }
       } catch (e) {
