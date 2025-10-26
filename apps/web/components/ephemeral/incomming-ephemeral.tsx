@@ -1,26 +1,23 @@
 "use client";
 
-import { FormEvent, useEffect, useRef } from "react";
-import { atom, useSetAtom } from "jotai";
-import AnimatedText from "./animated-text";
+import { FormEvent, useCallback, useEffect, useRef } from "react";
+import { PrimitiveAtom, useAtomValue, useSetAtom } from "jotai";
 import { cn } from "@/lib/utils";
-import { WSClient } from "@/lib/ws";
+import { wsClientAtom } from "@/stores/stores";
+import { TypingBack, TypingClear, TypingUpdate } from "@/lib/types";
+import AnimatedText from "./animated-text";
 import styles from "./styles.module.css";
-
-type EphemeralHandlers = {
-  onInput?: WSClient["send"];
-};
-
-const text = atom("");
 
 const CHAR_WIDTH = 12.24; // px
 const LINE_CHAR_LIMIT = 15;
 const CARET_IDLE_DELAY = 100; // ms to wait after last input before blinking resumes
 
-export default function Ephemeral({
-  handlers,
+export default function IncommingEphemeral({
+  textAtom,
+  userId,
 }: {
-  handlers?: EphemeralHandlers;
+  textAtom: PrimitiveAtom<string>;
+  userId: string;
 }) {
   const editableRef = useRef<HTMLDivElement>(null);
   const textContainerRef = useRef<HTMLDivElement>(null);
@@ -29,7 +26,8 @@ export default function Ephemeral({
   const caretRef = useRef<HTMLDivElement>(null);
   const caretAnimationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const setText = useSetAtom(text);
+  const wsClient = useAtomValue(wsClientAtom);
+  const setText = useSetAtom(textAtom);
 
   const showCaretWhileTyping = () => {
     if (!caretRef.current) return;
@@ -46,6 +44,33 @@ export default function Ephemeral({
     }, CARET_IDLE_DELAY);
   };
 
+  // Single place to apply actions so both local inputs and WS messages use the same logic
+  const applyTypingUpdate = useCallback(
+    ({ char }: TypingUpdate) => {
+      if (!animatorRef.current || char == null) return;
+      setText((prev: string) => prev + char);
+      animatorRef.current.addChar(char);
+      showCaretWhileTyping();
+    },
+    [setText]
+  );
+
+  const applyTypingClear = useCallback(
+    (_: TypingClear) => {
+      if (!animatorRef.current) return;
+      animatorRef.current.blurAll();
+      setText("");
+      showCaretWhileTyping();
+    },
+    [setText]
+  );
+
+  const applyTypingBack = useCallback((_: TypingBack) => {
+    if (!animatorRef.current) return;
+    animatorRef.current.deleteChar();
+    showCaretWhileTyping();
+  }, []);
+
   const handleInput = (e: FormEvent<HTMLDivElement>) => {
     if (!animatorRef.current) return;
 
@@ -54,33 +79,22 @@ export default function Ephemeral({
 
     // Handle Enter (paragraph insertion)
     if (inputEvent.inputType === "insertParagraph") {
-      animatorRef.current.blurAll();
-      setText("");
-      showCaretWhileTyping();
-
-      handlers?.onInput?.({ type: "typing_clear" });
+      applyTypingClear({ userId: "" });
       return;
     }
 
     if (inputEvent.inputType === "deleteContentBackward") {
-      animatorRef.current.deleteChar();
-      showCaretWhileTyping();
-
-      handlers?.onInput?.({ type: "typing_back" });
+      applyTypingBack({ userId: "" });
       return;
     }
 
     if (char === null) return;
 
-    setText((prev) => prev + char);
-    animatorRef.current.addChar(char);
-    handlers?.onInput?.({ type: "typing_update", char });
-
-    showCaretWhileTyping();
+    applyTypingUpdate({ userId: "", char });
   };
 
   useEffect(() => {
-    editableRef.current?.focus();
+    // editableRef.current?.focus();
 
     if (!textContainerRef.current) return;
 
@@ -93,6 +107,29 @@ export default function Ephemeral({
       animatorRef.current = null;
     };
   }, []);
+
+  // Subscribe to WS messages and map them to the same actions
+  useEffect(() => {
+    if (!wsClient) return;
+    const filteredUpdate = (t: TypingUpdate) => {
+      if (t.userId !== userId) return;
+      applyTypingUpdate(t);
+    };
+    const filteredClear = (t: TypingClear) => {
+      if (t.userId !== userId) return;
+      applyTypingClear(t);
+    };
+    const filteredBack = (t: TypingBack) => {
+      if (t.userId !== userId) return;
+      applyTypingBack(t);
+    };
+    const unsubscribe = wsClient.setHandlers(
+      filteredUpdate,
+      filteredClear,
+      filteredBack
+    );
+    return unsubscribe;
+  }, [wsClient, userId, applyTypingUpdate, applyTypingClear, applyTypingBack]);
 
   return (
     <div className="relative flex text-xl h-[1lh]">
@@ -120,7 +157,7 @@ export default function Ephemeral({
         role="textbox"
         aria-label="Invisible input"
         spellCheck={false}
-        onBlur={() => editableRef.current?.focus()}
+        // onBlur={() => editableRef.current?.focus()}
         onInput={handleInput}
         onCompositionEnd={handleInput}
         className="relative w-0 h-full outline-none overflow-hidden
