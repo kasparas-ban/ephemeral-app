@@ -36,6 +36,10 @@ func (h *Hub) Run() {
 		case client := <-h.register:
 			h.clients[client] = true
 			log.Printf("Client registered: %s (total: %d)", client.userID, len(h.clients))
+			// Send current presence (excluding the newly registered client) to the newly registered client
+			h.sendPresenceTo(client)
+
+			// Broadcast updated presence to all existing clients except the new one
 			h.broadcastPresenceExcept(client)
 
 		case client := <-h.unregister:
@@ -88,6 +92,39 @@ func (h *Hub) broadcastPresenceExcept(exclude *Client) {
 		default:
 			log.Printf("Client %s send buffer full, skipping message", client.userID)
 		}
+	}
+}
+
+// sendPresenceTo sends the presence list of all other connected clients to the specified client.
+func (h *Hub) sendPresenceTo(target *Client) {
+	users := make([]PresenceUser, 0, len(h.clients))
+	for client := range h.clients {
+		if client == target {
+			continue
+		}
+		users = append(users, PresenceUser{ID: client.userID})
+	}
+
+	// If there are no other users, skip sending an empty presence message.
+	if len(users) == 0 {
+		return
+	}
+
+	presence := PresenceMessage{
+		Type:  "presence",
+		Users: users,
+	}
+
+	data, err := json.Marshal(presence)
+	if err != nil {
+		log.Printf("Error marshaling presence for client %s: %v", target.userID, err)
+		return
+	}
+
+	select {
+	case target.send <- data:
+	default:
+		log.Printf("Client %s send buffer full, skipping presence", target.userID)
 	}
 }
 

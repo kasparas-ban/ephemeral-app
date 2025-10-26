@@ -65,6 +65,22 @@ func TestIntegration_WebsocketTypingFlow(t *testing.T) {
 	}
 	defer connB.Close()
 
+	// Newly connected client should receive a presence message with existing users; drain it before proceeding.
+	connB.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
+	if mt, raw, err := connB.ReadMessage(); err == nil {
+		if mt != websocket.TextMessage {
+			t.Fatalf("expected text message for presence, got %d", mt)
+		}
+		var presenceB realtime.PresenceMessage
+		if err := json.Unmarshal(raw, &presenceB); err != nil {
+			t.Fatalf("unmarshal presence for connB: %v", err)
+		}
+		if presenceB.Type != "presence" {
+			t.Fatalf("expected presence type for connB, got %q", presenceB.Type)
+		}
+	}
+	connB.SetReadDeadline(time.Time{})
+
 	connA.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
 	msgType, raw, err := connA.ReadMessage()
 	if err != nil {

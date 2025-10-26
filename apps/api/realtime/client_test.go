@@ -271,8 +271,10 @@ func TestClient_ReadPumpDispatchesAndUnregistersOnClose(t *testing.T) {
 	client := NewClient(h, pair.server)
 	h.Register(client)
 
-	// Drain presence message that receiver observes after registering client.
+	// Drain presence message that receiver observes after registering client
+	// and the presence sent to the newly registered client.
 	readWithTimeout(receiver.send, 50*time.Millisecond)
+	readWithTimeout(client.send, 50*time.Millisecond)
 
 	done := make(chan struct{})
 	go func() {

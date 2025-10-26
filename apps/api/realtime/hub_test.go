@@ -69,8 +69,20 @@ func TestHub_RegisterBroadcastsPresenceToExistingClients(t *testing.T) {
 		t.Fatalf("presence message missing expected users: %+v", presence.Users)
 	}
 
-	if got := readWithTimeout(second.send, 100*time.Millisecond); got != nil {
-		t.Fatalf("expected no presence message for newly registered client, got %s", string(got))
+	// Newly registered client should receive presence with only the first user
+	if raw := readWithTimeout(second.send, 200*time.Millisecond); raw == nil {
+		t.Fatalf("expected presence message for newly registered client, got none")
+	} else {
+		var presence2 PresenceMessage
+		if err := json.Unmarshal(raw, &presence2); err != nil {
+			t.Fatalf("unmarshal presence for second: %v", err)
+		}
+		if presence2.Type != "presence" {
+			t.Fatalf("expected presence type, got %q", presence2.Type)
+		}
+		if len(presence2.Users) != 1 || presence2.Users[0].ID != first.userID {
+			t.Fatalf("expected presence with only first user for newly registered client, got %+v", presence2.Users)
+		}
 	}
 }
 
@@ -84,8 +96,9 @@ func TestHub_UnregisterClosesChannelAndBroadcastsPresence(t *testing.T) {
 	h.Register(first)
 	h.Register(second)
 
-	// Drain the presence message produced by registering the second client.
+	// Drain presence messages produced by registering the second client (to first) and the presence sent to the newly registered client.
 	drainChannel(first.send)
+	drainChannel(second.send)
 
 	h.unregister <- second
 
@@ -175,8 +188,9 @@ func TestHub_BroadcastMessageExceptSkipsOnMarshalError(t *testing.T) {
 	h.Register(sender)
 	h.Register(receiver)
 
-	// Drain presence from registering receiver.
+	// Drain presence messages caused by registering receiver (to sender) and presence to the newly registered receiver.
 	drainChannel(sender.send)
+	drainChannel(receiver.send)
 
 	// json cannot marshal a channel, which should trigger the error path.
 	msg := map[string]any{
@@ -221,8 +235,20 @@ func TestHub_PresenceSkipsClientsWithFullBuffer(t *testing.T) {
 		t.Fatalf("expected no additional presence message for blocked client, got %s", string(raw))
 	}
 
-	if raw := readWithTimeout(other.send, 100*time.Millisecond); raw != nil {
-		t.Fatalf("expected no presence message for newly registered client, got %s", string(raw))
+	// Newly registered client should receive presence containing the blocked client
+	if raw := readWithTimeout(other.send, 200*time.Millisecond); raw == nil {
+		t.Fatalf("expected presence message for newly registered client, got none")
+	} else {
+		var presence PresenceMessage
+		if err := json.Unmarshal(raw, &presence); err != nil {
+			t.Fatalf("unmarshal presence for other: %v", err)
+		}
+		if presence.Type != "presence" {
+			t.Fatalf("expected presence type, got %q", presence.Type)
+		}
+		if len(presence.Users) != 1 || presence.Users[0].ID != blocked.userID {
+			t.Fatalf("expected presence with blocked user for newly registered client, got %+v", presence.Users)
+		}
 	}
 }
 

@@ -33,7 +33,7 @@ function IncomingEphemerals() {
       {connectedUsers.map((user) => (
         <div
           key={user.id}
-          className="h-20 w-20 bg-red-500"
+          className="absolute h-20 w-20 bg-red-500"
           style={{
             translate: `${100 * Math.random()}px ${100 * Math.random()}px`,
           }}
