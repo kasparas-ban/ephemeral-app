@@ -59,15 +59,38 @@ func TestIntegration_WebsocketTypingFlow(t *testing.T) {
 	}
 	defer connA.Close()
 
+	// First client should immediately receive presence with empty list
+	connA.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
+	if mt, raw, err := connA.ReadMessage(); err != nil {
+		t.Fatalf("read presence for first client: %v", err)
+	} else {
+		if mt != websocket.TextMessage {
+			t.Fatalf("expected text message for presence, got %d", mt)
+		}
+		var presenceA realtime.PresenceMessage
+		if err := json.Unmarshal(raw, &presenceA); err != nil {
+			t.Fatalf("unmarshal presence for connA: %v", err)
+		}
+		if presenceA.Type != "presence" {
+			t.Fatalf("expected presence type for connA, got %q", presenceA.Type)
+		}
+		if len(presenceA.Users) != 0 {
+			t.Fatalf("expected empty presence for first client, got %d", len(presenceA.Users))
+		}
+	}
+	connA.SetReadDeadline(time.Time{})
+
 	connB, _, err := websocket.DefaultDialer.Dial(wsURL, headers)
 	if err != nil {
 		t.Fatalf("dial second client: %v", err)
 	}
 	defer connB.Close()
 
-	// Newly connected client should receive a presence message with existing users; drain it before proceeding.
+	// Newly connected client (B) should receive presence containing only A
 	connB.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
-	if mt, raw, err := connB.ReadMessage(); err == nil {
+	if mt, raw, err := connB.ReadMessage(); err != nil {
+		t.Fatalf("read presence for second client: %v", err)
+	} else {
 		if mt != websocket.TextMessage {
 			t.Fatalf("expected text message for presence, got %d", mt)
 		}
@@ -78,30 +101,31 @@ func TestIntegration_WebsocketTypingFlow(t *testing.T) {
 		if presenceB.Type != "presence" {
 			t.Fatalf("expected presence type for connB, got %q", presenceB.Type)
 		}
+		if len(presenceB.Users) != 1 {
+			t.Fatalf("expected presence with 1 user for second client, got %d", len(presenceB.Users))
+		}
 	}
 	connB.SetReadDeadline(time.Time{})
 
+	// First client (A) should receive presence containing only B
 	connA.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
-	msgType, raw, err := connA.ReadMessage()
-	if err != nil {
-		t.Fatalf("read presence: %v", err)
+	if mt, raw, err := connA.ReadMessage(); err != nil {
+		t.Fatalf("read presence update for first client: %v", err)
+	} else {
+		if mt != websocket.TextMessage {
+			t.Fatalf("expected text message for presence, got %d", mt)
+		}
+		var presence realtime.PresenceMessage
+		if err := json.Unmarshal(raw, &presence); err != nil {
+			t.Fatalf("unmarshal presence: %v", err)
+		}
+		if presence.Type != "presence" {
+			t.Fatalf("expected presence type, got %q", presence.Type)
+		}
+		if len(presence.Users) != 1 {
+			t.Fatalf("expected 1 user in presence for first client after second connects, got %d", len(presence.Users))
+		}
 	}
-	if msgType != websocket.TextMessage {
-		t.Fatalf("expected text message, got %d", msgType)
-	}
-
-	var presence realtime.PresenceMessage
-	if err := json.Unmarshal(raw, &presence); err != nil {
-		t.Fatalf("unmarshal presence: %v", err)
-	}
-
-	if presence.Type != "presence" {
-		t.Fatalf("expected presence type, got %q", presence.Type)
-	}
-	if len(presence.Users) != 2 {
-		t.Fatalf("expected 2 users in presence, got %d", len(presence.Users))
-	}
-
 	connA.SetReadDeadline(time.Time{})
 
 	if err := connA.WriteJSON(map[string]any{"type": "typing_update", "char": "g"}); err != nil {
@@ -109,7 +133,7 @@ func TestIntegration_WebsocketTypingFlow(t *testing.T) {
 	}
 
 	connB.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
-	msgType, raw, err = connB.ReadMessage()
+	msgType, raw, err := connB.ReadMessage()
 	if err != nil {
 		t.Fatalf("read typing update: %v", err)
 	}

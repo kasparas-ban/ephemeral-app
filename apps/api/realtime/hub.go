@@ -67,30 +67,37 @@ func (h *Hub) Run() {
 }
 
 func (h *Hub) broadcastPresenceExcept(exclude *Client) {
-	users := make([]PresenceUser, 0, len(h.clients))
-	for client := range h.clients {
-		users = append(users, PresenceUser{ID: client.userID})
-	}
-
-	presence := PresenceMessage{
-		Type:  "presence",
-		Users: users,
-	}
-
-	data, err := json.Marshal(presence)
-	if err != nil {
-		log.Printf("Error marshaling presence: %v", err)
-		return
-	}
-
-	for client := range h.clients {
-		if client == exclude {
+	// For each target client (except the excluded one), build a presence list
+	// that contains all other clients except the target itself. This ensures
+	// no client sees itself in the presence list.
+	for target := range h.clients {
+		if target == exclude {
 			continue
 		}
+
+		users := make([]PresenceUser, 0, len(h.clients))
+		for c := range h.clients {
+			if c == target {
+				continue
+			}
+			users = append(users, PresenceUser{ID: c.userID})
+		}
+
+		presence := PresenceMessage{
+			Type:  "presence",
+			Users: users,
+		}
+
+		data, err := json.Marshal(presence)
+		if err != nil {
+			log.Printf("Error marshaling presence: %v", err)
+			continue
+		}
+
 		select {
-		case client.send <- data:
+		case target.send <- data:
 		default:
-			log.Printf("Client %s send buffer full, skipping message", client.userID)
+			log.Printf("Client %s send buffer full, skipping message", target.userID)
 		}
 	}
 }
@@ -103,11 +110,6 @@ func (h *Hub) sendPresenceTo(target *Client) {
 			continue
 		}
 		users = append(users, PresenceUser{ID: client.userID})
-	}
-
-	// If there are no other users, skip sending an empty presence message.
-	if len(users) == 0 {
-		return
 	}
 
 	presence := PresenceMessage{

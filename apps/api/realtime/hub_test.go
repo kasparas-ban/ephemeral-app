@@ -35,9 +35,20 @@ func TestHub_RegisterBroadcastsPresenceToExistingClients(t *testing.T) {
 	second := newTestClient(h, "user-2", 10)
 
 	h.Register(first)
-
-	if got := readWithTimeout(first.send, 100*time.Millisecond); got != nil {
-		t.Fatalf("expected no presence message for first registration, got %s", string(got))
+	// First registration should receive an empty presence list
+	if raw := readWithTimeout(first.send, 200*time.Millisecond); raw == nil {
+		t.Fatalf("expected presence message for first registration, got none")
+	} else {
+		var presence PresenceMessage
+		if err := json.Unmarshal(raw, &presence); err != nil {
+			t.Fatalf("unmarshal presence for first: %v", err)
+		}
+		if presence.Type != "presence" {
+			t.Fatalf("expected presence type, got %q", presence.Type)
+		}
+		if len(presence.Users) != 0 {
+			t.Fatalf("expected empty presence for first registration, got %+v", presence.Users)
+		}
 	}
 
 	h.Register(second)
@@ -56,17 +67,8 @@ func TestHub_RegisterBroadcastsPresenceToExistingClients(t *testing.T) {
 		t.Fatalf("expected presence type, got %q", presence.Type)
 	}
 
-	if len(presence.Users) != 2 {
-		t.Fatalf("expected 2 users in presence message, got %d", len(presence.Users))
-	}
-
-	seen := map[string]bool{}
-	for _, u := range presence.Users {
-		seen[u.ID] = true
-	}
-
-	if !seen[first.userID] || !seen[second.userID] {
-		t.Fatalf("presence message missing expected users: %+v", presence.Users)
+	if len(presence.Users) != 1 || presence.Users[0].ID != second.userID {
+		t.Fatalf("expected presence with only second user for first client, got %+v", presence.Users)
 	}
 
 	// Newly registered client should receive presence with only the first user
@@ -112,8 +114,8 @@ func TestHub_UnregisterClosesChannelAndBroadcastsPresence(t *testing.T) {
 		t.Fatalf("unmarshal presence: %v", err)
 	}
 
-	if len(presence.Users) != 1 || presence.Users[0].ID != first.userID {
-		t.Fatalf("expected only first user remaining, got %+v", presence.Users)
+	if len(presence.Users) != 0 {
+		t.Fatalf("expected empty presence after only one client remains, got %+v", presence.Users)
 	}
 
 	select {
@@ -213,6 +215,9 @@ func TestHub_PresenceSkipsClientsWithFullBuffer(t *testing.T) {
 	other := newTestClient(h, "other", 10)
 
 	h.Register(blocked)
+
+	// Drain the initial presence message sent to the blocked client so we can fill the buffer.
+	drainChannel(blocked.send)
 
 	// Fill the blocked client's send buffer so future sends should be skipped.
 	blocked.send <- []byte("sentinel")
