@@ -192,6 +192,37 @@ func TestClient_handleMessage_typingClearBroadcastsToOthers(t *testing.T) {
 	}
 }
 
+func TestClient_handleMessage_typingBackBroadcastsToOthers(t *testing.T) {
+	_, sender, receiver := setupHubWithClients(t)
+
+	payload := map[string]any{
+		"type": "typing_back",
+	}
+	data, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	sender.handleMessage(data)
+
+	got := readWithTimeout(receiver.send, 200*time.Millisecond)
+	if got == nil {
+		t.Fatalf("expected a broadcast message, got none")
+	}
+
+	var msg TypingBackMessage
+	if err := json.Unmarshal(got, &msg); err != nil {
+		t.Fatalf("unmarshal broadcast: %v", err)
+	}
+
+	if msg.Type != "typing_back" {
+		t.Fatalf("expected type typing_back, got %q", msg.Type)
+	}
+	if msg.UserID != sender.userID {
+		t.Fatalf("expected userId %q, got %q", sender.userID, msg.UserID)
+	}
+}
+
 func TestClient_handleMessage_unknownTypeDoesNotBroadcast(t *testing.T) {
 	_, sender, receiver := setupHubWithClients(t)
 
@@ -240,8 +271,10 @@ func TestClient_ReadPumpDispatchesAndUnregistersOnClose(t *testing.T) {
 	client := NewClient(h, pair.server)
 	h.Register(client)
 
-	// Drain presence message that receiver observes after registering client.
+	// Drain presence message that receiver observes after registering client
+	// and the presence sent to the newly registered client.
 	readWithTimeout(receiver.send, 50*time.Millisecond)
+	readWithTimeout(client.send, 50*time.Millisecond)
 
 	done := make(chan struct{})
 	go func() {

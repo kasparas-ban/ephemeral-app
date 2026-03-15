@@ -11,6 +11,24 @@ type TypingClearMessage struct {
 	UserID string `json:"userId"`
 }
 
+type TypingBackMessage struct {
+	Type   string `json:"type"` // "typing_back"
+	UserID string `json:"userId"`
+}
+
+type TypingUpdateIn struct {
+	Type string `json:"type"` // "typing_update"
+	Char string `json:"char"`
+}
+
+type TypingClearIn struct {
+	Type string `json:"type"` // "typing_clear"
+}
+
+type TypingBackIn struct {
+	Type string `json:"type"` // "typing_back"
+}
+
 type PresenceUser struct {
 	ID string `json:"id"`
 }

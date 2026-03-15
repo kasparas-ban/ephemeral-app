@@ -107,7 +107,7 @@ func (c *Client) handleMessage(data []byte) {
 
 	switch baseMsg.Type {
 	case "typing_update":
-		var msg TypingUpdateMessage
+		var msg TypingUpdateIn
 		if err := json.Unmarshal(data, &msg); err != nil {
 			log.Printf("Error parsing typing_update: %v", err)
 			return
@@ -115,19 +115,17 @@ func (c *Client) handleMessage(data []byte) {
 		c.handleTypingUpdate(msg)
 
 	case "typing_clear":
-		var msg TypingClearMessage
-		if err := json.Unmarshal(data, &msg); err != nil {
-			log.Printf("Error parsing typing_clear: %v", err)
-			return
-		}
 		c.handleTypingClear()
+
+	case "typing_back":
+		c.handleTypingBack()
 
 	default:
 		log.Printf("Unknown message type from %s: %s", c.userID, baseMsg.Type)
 	}
 }
 
-func (c *Client) handleTypingUpdate(msg TypingUpdateMessage) {
+func (c *Client) handleTypingUpdate(msg TypingUpdateIn) {
 	broadcast := TypingUpdateMessage{
 		Type:   "typing_update",
 		UserID: c.userID,
@@ -139,6 +137,14 @@ func (c *Client) handleTypingUpdate(msg TypingUpdateMessage) {
 func (c *Client) handleTypingClear() {
 	broadcast := TypingClearMessage{
 		Type:   "typing_clear",
+		UserID: c.userID,
+	}
+	c.hub.BroadcastMessageExcept(c, broadcast)
+}
+
+func (c *Client) handleTypingBack() {
+	broadcast := TypingBackMessage{
+		Type:   "typing_back",
 		UserID: c.userID,
 	}
 	c.hub.BroadcastMessageExcept(c, broadcast)
