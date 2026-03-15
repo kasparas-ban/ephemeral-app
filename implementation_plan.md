@@ -17,7 +17,7 @@
 - Broadcast `presence` (IDs only) on join/leave and periodically (~30s).
 - Relay typing events from any client to all clients (letter-by-letter updates).
 - Heartbeats: read deadlines + `SetPongHandler`, server pings every ~20s; drop stale clients.
-- Message schema (JSON over WS):
+- Message schema (JSON over WS)
 - Client→Server:
   - `hello` {}
   - `typing_update` { type: "typing_update", userId: string, char: string }

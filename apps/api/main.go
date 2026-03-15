@@ -7,39 +7,37 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strings"
 
 	"github.com/gorilla/websocket"
 	"github.com/joho/godotenv"
 )
 
 func checkOrigin(r *http.Request) bool {
-	origin := r.Header.Get("Origin")
-	if origin == "" {
-		return false
-	}
+	// origin := r.Header.Get("Origin")
+	return true
+	// if origin == "" {
+	// 	return false
+	// }
 
-	// Allow explicit list via env
-	for a := range strings.SplitSeq(os.Getenv("ALLOWED_ORIGINS"), ",") {
-		if strings.TrimSpace(a) == origin {
-			return true
-		}
-	}
+	// // Allow explicit list via env
+	// for a := range strings.SplitSeq(os.Getenv("ALLOWED_ORIGINS"), ",") {
+	// 	if strings.TrimSpace(a) == origin {
+	// 		return true
+	// 	}
+	// }
 
-	return false
+	// return false
 }
 
-func healthHandler() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
-			log.Printf("Error encoding health response: %v", err)
-		}
-	})
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
+		log.Printf("Error encoding health response: %v", err)
+	}
 }
 
-func websocketHandler(hub *realtime.Hub) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func websocketHandler(hub *realtime.Hub) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			log.Printf("WebSocket upgrade failed: %v", err)
@@ -51,7 +49,7 @@ func websocketHandler(hub *realtime.Hub) http.Handler {
 
 		go client.WritePump()
 		go client.ReadPump()
-	})
+	}
 }
 
 var upgrader = websocket.Upgrader{
@@ -70,8 +68,9 @@ func main() {
 	hub := realtime.NewHub()
 	go hub.Run()
 
-	http.Handle("/health", healthHandler())
-	http.Handle("/connect", websocketHandler(hub))
+	mux := http.NewServeMux()
+	mux.HandleFunc("/health", healthHandler)
+	mux.HandleFunc("/connect", websocketHandler(hub))
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -79,5 +78,5 @@ func main() {
 	}
 	addr := "localhost:" + port
 	fmt.Println("Go API listening on", addr)
-	log.Fatal(http.ListenAndServe(addr, nil))
+	log.Fatal(http.ListenAndServe(addr, mux))
 }

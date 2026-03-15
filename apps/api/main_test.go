@@ -17,7 +17,7 @@ func TestHealthHandler(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	rr := httptest.NewRecorder()
 
-	healthHandler().ServeHTTP(rr, req)
+	healthHandler(rr, req)
 
 	if rr.Code != http.StatusOK {
 		t.Fatalf("unexpected status: %d", rr.Code)
@@ -44,7 +44,7 @@ func TestIntegration_WebsocketTypingFlow(t *testing.T) {
 	go h.Run()
 
 	mux := http.NewServeMux()
-	mux.Handle("/connect", websocketHandler(h))
+	mux.HandleFunc("/connect", websocketHandler(h))
 
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
