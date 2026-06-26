@@ -2,6 +2,11 @@ export type Presence = {
   users: { id: string }[];
 };
 
+export type TypingAction =
+  | { kind: "char"; char: string }
+  | { kind: "back" }
+  | { kind: "clear" };
+
 export type TypingUpdate = {
   userId: string;
   char: string;

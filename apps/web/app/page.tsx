@@ -1,11 +1,11 @@
 "use client";
 
 import { atom, useAtomValue } from "jotai";
-import { connectedUsersAtom, wsClientAtom } from "@/stores/stores";
+import { connectedUsersAtom } from "@/stores/stores";
 import WorldCanvas from "@/components/canvas/WorldCanvas";
-import Ephemeral from "@/components/ephemeral/ephemeral";
+import LocalEphemeral from "@/components/ephemeral/local-ephemeral";
 import { useMemo } from "react";
-import IncommingEphemeralComponent from "@/components/ephemeral/incomming-ephemeral";
+import RemoteEphemeral from "@/components/ephemeral/remote-ephemeral";
 
 export default function Home() {
   return (
@@ -47,10 +47,9 @@ function IncomingEphemerals() {
 
 function IncomingEphemeralItem({ userId }: { userId: string }) {
   const textAtom = useMemo(() => atom(""), []);
-  return <IncommingEphemeralComponent textAtom={textAtom} userId={userId} />;
+  return <RemoteEphemeral textAtom={textAtom} userId={userId} />;
 }
 
 function UserEphemeral() {
-  const wsClient = useAtomValue(wsClientAtom);
-  return <Ephemeral handlers={{ onInput: wsClient?.send }} />;
+  return <LocalEphemeral />;
 }
