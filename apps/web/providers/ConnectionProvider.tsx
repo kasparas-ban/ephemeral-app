@@ -1,9 +1,13 @@
 "use client";
 
 import { useEffect } from "react";
-import { WSClient } from "@/lib/ws";
 import { useSetAtom } from "jotai";
-import { wsClientAtom } from "@/stores/stores";
+import { WSClient } from "@/lib/ws";
+import {
+  connectedUsersAtom,
+  connectionStatusAtom,
+  wsClientAtom,
+} from "@/stores/stores";
 
 export const ConnectionProvider = ({
   children,
@@ -11,13 +15,27 @@ export const ConnectionProvider = ({
   children: React.ReactNode;
 }) => {
   const setWsClient = useSetAtom(wsClientAtom);
+  const setConnectedUsers = useSetAtom(connectedUsersAtom);
+  const setStatus = useSetAtom(connectionStatusAtom);
 
   useEffect(() => {
     const ws = new WSClient();
-    ws.connect();
 
+    const unsubscribeMessage = ws.onMessage((msg) => {
+      if (msg.type === "presence") setConnectedUsers(msg.users);
+    });
+    const unsubscribeStatus = ws.onStatus(setStatus);
+
+    ws.connect();
     setWsClient(ws);
-  }, []);
+
+    return () => {
+      unsubscribeMessage();
+      unsubscribeStatus();
+      ws.disconnect();
+      setWsClient(null);
+    };
+  }, [setWsClient, setConnectedUsers, setStatus]);
 
   return children;
 };

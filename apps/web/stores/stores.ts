@@ -1,10 +1,8 @@
-import { atom, getDefaultStore } from "jotai";
+import { atom } from "jotai";
 import { Presence } from "@/lib/types";
-import { WSClient } from "@/lib/ws";
+import { ConnectionStatus, WSClient } from "@/lib/ws";
 
-const store = getDefaultStore();
 export const connectedUsersAtom = atom<Presence["users"]>([]);
-export const setConnectedUsers = (users: Presence["users"]) =>
-  store.set(connectedUsersAtom, users);
+export const connectionStatusAtom = atom<ConnectionStatus>("closed");
 
 export const wsClientAtom = atom<WSClient | null>(null);

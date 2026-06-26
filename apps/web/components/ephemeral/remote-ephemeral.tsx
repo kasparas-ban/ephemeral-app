@@ -22,7 +22,7 @@ export default function RemoteEphemeral({
 
   useEffect(() => {
     if (!wsClient) return;
-    return wsClient.addListener((msg) => {
+    return wsClient.onMessage((msg) => {
       const action = serverMessageToAction(msg, userId);
       if (action) compositionRef.current?.apply(action);
     });
