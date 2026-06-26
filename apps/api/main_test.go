@@ -141,7 +141,7 @@ func TestIntegration_WebsocketTypingFlow(t *testing.T) {
 		t.Fatalf("expected text message, got %d", msgType)
 	}
 
-	var typing realtime.TypingUpdateMessage
+	var typing realtime.RelayMessage
 	if err := json.Unmarshal(raw, &typing); err != nil {
 		t.Fatalf("unmarshal typing update: %v", err)
 	}

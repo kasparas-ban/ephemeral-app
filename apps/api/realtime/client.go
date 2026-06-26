@@ -96,56 +96,42 @@ func (c *Client) WritePump() {
 }
 
 func (c *Client) handleMessage(data []byte) {
-	var baseMsg struct {
-		Type string `json:"type"`
-	}
-
-	if err := json.Unmarshal(data, &baseMsg); err != nil {
+	var envelope map[string]json.RawMessage
+	if err := json.Unmarshal(data, &envelope); err != nil {
 		log.Printf("Error unmarshaling message from %s: %v", c.userID, err)
 		return
 	}
 
-	switch baseMsg.Type {
-	case "typing_update":
-		var msg TypingUpdateIn
-		if err := json.Unmarshal(data, &msg); err != nil {
-			log.Printf("Error parsing typing_update: %v", err)
-			return
-		}
-		c.handleTypingUpdate(msg)
-
-	case "typing_clear":
-		c.handleTypingClear()
-
-	case "typing_back":
-		c.handleTypingBack()
-
-	default:
-		log.Printf("Unknown message type from %s: %s", c.userID, baseMsg.Type)
+	msgType := envelopeType(envelope)
+	if !relayableTypes[msgType] {
+		log.Printf("Unknown or non-relayable message type from %s: %q", c.userID, msgType)
+		return
 	}
+
+	c.relay(envelope)
 }
 
-func (c *Client) handleTypingUpdate(msg TypingUpdateIn) {
-	broadcast := TypingUpdateMessage{
-		Type:   "typing_update",
-		UserID: c.userID,
-		Char:   msg.Char,
+func (c *Client) relay(envelope map[string]json.RawMessage) {
+	userID, err := json.Marshal(c.userID)
+	if err != nil {
+		log.Printf("Error marshaling userId for %s: %v", c.userID, err)
+		return
 	}
-	c.hub.BroadcastMessageExcept(c, broadcast)
+
+	envelope["userId"] = userID
+	c.hub.BroadcastMessageExcept(c, envelope)
 }
 
-func (c *Client) handleTypingClear() {
-	broadcast := TypingClearMessage{
-		Type:   "typing_clear",
-		UserID: c.userID,
+func envelopeType(envelope map[string]json.RawMessage) string {
+	raw, ok := envelope["type"]
+	if !ok {
+		return ""
 	}
-	c.hub.BroadcastMessageExcept(c, broadcast)
-}
 
-func (c *Client) handleTypingBack() {
-	broadcast := TypingBackMessage{
-		Type:   "typing_back",
-		UserID: c.userID,
+	var t string
+	if err := json.Unmarshal(raw, &t); err != nil {
+		return ""
 	}
-	c.hub.BroadcastMessageExcept(c, broadcast)
+
+	return t
 }

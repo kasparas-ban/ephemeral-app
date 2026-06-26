@@ -145,7 +145,7 @@ func TestClient_handleMessage_typingUpdateBroadcastsToOthers(t *testing.T) {
 		t.Fatalf("expected a broadcast message, got none")
 	}
 
-	var msg TypingUpdateMessage
+	var msg RelayMessage
 	if err := json.Unmarshal(got, &msg); err != nil {
 		t.Fatalf("unmarshal broadcast: %v", err)
 	}
@@ -179,7 +179,7 @@ func TestClient_handleMessage_typingClearBroadcastsToOthers(t *testing.T) {
 		t.Fatalf("expected a broadcast message, got none")
 	}
 
-	var msg TypingClearMessage
+	var msg RelayMessage
 	if err := json.Unmarshal(got, &msg); err != nil {
 		t.Fatalf("unmarshal broadcast: %v", err)
 	}
@@ -210,7 +210,7 @@ func TestClient_handleMessage_typingBackBroadcastsToOthers(t *testing.T) {
 		t.Fatalf("expected a broadcast message, got none")
 	}
 
-	var msg TypingBackMessage
+	var msg RelayMessage
 	if err := json.Unmarshal(got, &msg); err != nil {
 		t.Fatalf("unmarshal broadcast: %v", err)
 	}
@@ -295,7 +295,7 @@ func TestClient_ReadPumpDispatchesAndUnregistersOnClose(t *testing.T) {
 		t.Fatalf("expected broadcast for receiver, got none")
 	}
 
-	var msg TypingUpdateMessage
+	var msg RelayMessage
 	if err := json.Unmarshal(raw, &msg); err != nil {
 		t.Fatalf("unmarshal broadcast: %v", err)
 	}
