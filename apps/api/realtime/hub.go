@@ -36,97 +36,55 @@ func (h *Hub) Run() {
 		case client := <-h.register:
 			h.clients[client] = true
 			log.Printf("Client registered: %s (total: %d)", client.userID, len(h.clients))
-			// Send current presence (excluding the newly registered client) to the newly registered client
-			h.sendPresenceTo(client)
-
-			// Broadcast updated presence to all existing clients except the new one
-			h.broadcastPresenceExcept(client)
+			h.broadcastPresence()
 
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
 				close(client.send)
 				log.Printf("Client unregistered: %s (total: %d)", client.userID, len(h.clients))
-
-				h.broadcastPresenceExcept(client)
+				h.broadcastPresence()
 			}
 
 		case req := <-h.broadcast:
 			for client := range h.clients {
-				if client == req.exclude {
-					continue
-				}
-				select {
-				case client.send <- req.data:
-				default:
-					log.Printf("Client %s send buffer full, skipping message", client.userID)
+				if client != req.exclude {
+					h.trySend(client, req.data)
 				}
 			}
 		}
 	}
 }
 
-func (h *Hub) broadcastPresenceExcept(exclude *Client) {
-	// For each target client (except the excluded one), build a presence list
-	// that contains all other clients except the target itself. This ensures
-	// no client sees itself in the presence list.
+// broadcastPresence sends every connected client the presence list of all other
+// connected clients. Each client is excluded from its own list because clients
+// don't know their own server-assigned ID and rely on the server to filter it out.
+func (h *Hub) broadcastPresence() {
 	for target := range h.clients {
-		if target == exclude {
-			continue
-		}
-
 		users := make([]PresenceUser, 0, len(h.clients))
 		for c := range h.clients {
-			if c == target {
-				continue
+			if c != target {
+				users = append(users, PresenceUser{ID: c.userID})
 			}
-			users = append(users, PresenceUser{ID: c.userID})
 		}
 
-		presence := PresenceMessage{
-			Type:  "presence",
-			Users: users,
-		}
-
-		data, err := json.Marshal(presence)
+		data, err := json.Marshal(PresenceMessage{Type: "presence", Users: users})
 		if err != nil {
-			log.Printf("Error marshaling presence: %v", err)
+			log.Printf("Error marshaling presence for client %s: %v", target.userID, err)
 			continue
 		}
 
-		select {
-		case target.send <- data:
-		default:
-			log.Printf("Client %s send buffer full, skipping message", target.userID)
-		}
+		h.trySend(target, data)
 	}
 }
 
-// sendPresenceTo sends the presence list of all other connected clients to the specified client.
-func (h *Hub) sendPresenceTo(target *Client) {
-	users := make([]PresenceUser, 0, len(h.clients))
-	for client := range h.clients {
-		if client == target {
-			continue
-		}
-		users = append(users, PresenceUser{ID: client.userID})
-	}
-
-	presence := PresenceMessage{
-		Type:  "presence",
-		Users: users,
-	}
-
-	data, err := json.Marshal(presence)
-	if err != nil {
-		log.Printf("Error marshaling presence for client %s: %v", target.userID, err)
-		return
-	}
-
+// trySend delivers data to the client's send buffer, dropping the message if the
+// buffer is full so a slow client can't block the hub.
+func (h *Hub) trySend(c *Client, data []byte) {
 	select {
-	case target.send <- data:
+	case c.send <- data:
 	default:
-		log.Printf("Client %s send buffer full, skipping presence", target.userID)
+		log.Printf("Client %s send buffer full, skipping message", c.userID)
 	}
 }
 
