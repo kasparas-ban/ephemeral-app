@@ -1,7 +1,7 @@
 {
   "name": "ephemeral-monorepo",
   "private": true,
-  "packageManager": "pnpm@10.18.3",
+  "packageManager": "pnpm@11.6.0",
   "workspaces": [
     "apps/*",
     "packages/*"
