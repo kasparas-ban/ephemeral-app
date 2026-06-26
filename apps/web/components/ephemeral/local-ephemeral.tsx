@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useRef } from "react";
+import { SyntheticEvent, useRef } from "react";
 import { atom, useAtomValue } from "jotai";
 import { wsClientAtom } from "@/stores/stores";
 import { actionToClientMessage, inputEventToAction } from "@/lib/typing";
@@ -17,7 +17,7 @@ export default function LocalEphemeral() {
   const compositionRef = useRef<CompositionHandle>(null);
   const wsClient = useAtomValue(wsClientAtom);
 
-  const handleInput = (e: FormEvent<HTMLDivElement>) => {
+  const handleInput = (e: SyntheticEvent<HTMLDivElement>) => {
     const action = inputEventToAction(e.nativeEvent as InputEvent);
     if (!action) return;
 

@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  FormEvent,
+  SyntheticEvent,
   forwardRef,
   useEffect,
   useImperativeHandle,
@@ -17,29 +17,16 @@ const CHAR_WIDTH = 12.24; // px
 const LINE_CHAR_LIMIT = 15;
 const CARET_IDLE_DELAY = 100; // ms to wait after last input before blinking resumes
 
-/**
- * The interface of the Composition view: feed it actions, it renders them.
- * This is the whole DOM-facing surface that both adapters drive.
- */
 export type CompositionHandle = {
   apply: (action: TypingAction) => void;
 };
 
 export type CompositionProps = {
-  // Where the decoded text is mirrored (kept per-composition).
   textAtom: PrimitiveAtom<string>;
-  // Local compositions are typed into; remote ones only display.
   editable?: boolean;
-  // Supplied by the keyboard adapter to receive raw input from the editable.
-  onInput?: (e: FormEvent<HTMLDivElement>) => void;
+  onInput?: (e: SyntheticEvent<HTMLDivElement>) => void;
 };
 
-/**
- * A live composition rendered letter-by-letter (AnimatedText + caret). It hides
- * all of the AnimatedText choreography and caret bookkeeping behind a single
- * `apply(action)` method, so the keyboard and remote adapters share one
- * implementation of "what an action does to the screen".
- */
 const Composition = forwardRef<CompositionHandle, CompositionProps>(
   function Composition({ textAtom, editable = false, onInput }, ref) {
     const editableRef = useRef<HTMLDivElement>(null);
@@ -110,7 +97,7 @@ const Composition = forwardRef<CompositionHandle, CompositionProps>(
     }, [editable]);
 
     return (
-      <div className="relative flex text-xl h-[1lh]">
+      <div className="relative flex text-xl h-lh">
         <div
           ref={textContainerRef}
           className="absolute pointer-events-none right-[3px] whitespace-nowrap"
