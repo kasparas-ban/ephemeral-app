@@ -28,5 +28,11 @@ export default function RemoteEphemeral({
     });
   }, [wsClient, userId]);
 
-  return <Composition ref={compositionRef} textAtom={textAtom} />;
+  return (
+    <Composition
+      ref={compositionRef}
+      textAtom={textAtom}
+      testId="remote-composition"
+    />
+  );
 }

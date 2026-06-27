@@ -82,6 +82,27 @@ pnpm -r typecheck       # run typecheck across workspace (if configured)
 pnpm clean              # turbo clean
 ```
 
+## End-to-End Tests
+
+The E2E suite uses Playwright and starts the real Go API plus a production
+Next.js server on test-only ports.
+
+```bash
+pnpm exec playwright install chromium firefox webkit
+pnpm test:e2e          # Chromium, Firefox, WebKit, and mobile Chrome
+pnpm test:e2e:ui       # interactive Playwright runner
+pnpm test:e2e:debug    # headed debug mode
+pnpm test:e2e:report   # open the latest HTML report
+```
+
+Defaults:
+
+```bash
+E2E_WEB_PORT=13000
+E2E_API_PORT=18080
+E2E_HOST=127.0.0.1
+```
+
 ## Notes
 
 - Workspace packages are defined in `pnpm-workspace.yaml` (`apps/*`, `packages/*`).

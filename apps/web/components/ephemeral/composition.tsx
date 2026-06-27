@@ -25,10 +25,11 @@ export type CompositionProps = {
   textAtom: PrimitiveAtom<string>;
   editable?: boolean;
   onInput?: (e: SyntheticEvent<HTMLDivElement>) => void;
+  testId?: string;
 };
 
 const Composition = forwardRef<CompositionHandle, CompositionProps>(
-  function Composition({ textAtom, editable = false, onInput }, ref) {
+  function Composition({ textAtom, editable = false, onInput, testId }, ref) {
     const editableRef = useRef<HTMLDivElement>(null);
     const textContainerRef = useRef<HTMLDivElement>(null);
     const animatorRef = useRef<AnimatedText | null>(null);
@@ -97,9 +98,10 @@ const Composition = forwardRef<CompositionHandle, CompositionProps>(
     }, [editable]);
 
     return (
-      <div className="relative flex text-xl h-lh">
+      <div className="relative flex text-xl h-lh" data-testid={testId}>
         <div
           ref={textContainerRef}
+          data-testid={testId ? `${testId}-text` : "composition-text"}
           className="absolute pointer-events-none right-[3px] whitespace-nowrap"
         />
 
@@ -118,9 +120,9 @@ const Composition = forwardRef<CompositionHandle, CompositionProps>(
         {/* Real editable target: present, focusable, but visually transparent */}
         <div
           ref={editableRef}
-          contentEditable
-          role="textbox"
-          aria-label="Invisible input"
+          contentEditable={editable}
+          role={editable ? "textbox" : undefined}
+          aria-label={editable ? "Invisible input" : undefined}
           spellCheck={false}
           onBlur={editable ? () => editableRef.current?.focus() : undefined}
           onInput={editable ? onInput : undefined}

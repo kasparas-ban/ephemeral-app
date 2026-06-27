@@ -30,6 +30,7 @@ export default function LocalEphemeral() {
       ref={compositionRef}
       textAtom={localText}
       editable
+      testId="local-composition"
       onInput={handleInput}
     />
   );
