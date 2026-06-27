@@ -2,9 +2,35 @@ import { ClientMessage, ServerMessage } from "./types";
 
 export type ConnectionStatus = "connecting" | "open" | "closed";
 
+const DEFAULT_API_URL = "http://localhost:8080";
+const CONNECT_PATH = "/connect";
+
+export function getWebSocketUrl() {
+  const configuredWsUrl = process.env.NEXT_PUBLIC_WS_URL;
+  if (configuredWsUrl) return configuredWsUrl;
+
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API_URL;
+  return webSocketUrlFromApiUrl(apiUrl);
+}
+
+function webSocketUrlFromApiUrl(value: string) {
+  const url = new URL(value);
+
+  if (url.protocol === "http:") {
+    url.protocol = "ws:";
+  } else if (url.protocol === "https:") {
+    url.protocol = "wss:";
+  } else if (url.protocol !== "ws:" && url.protocol !== "wss:") {
+    throw new Error(`Unsupported API URL protocol: ${url.protocol}`);
+  }
+
+  url.pathname = `${url.pathname.replace(/\/$/, "")}${CONNECT_PATH}`;
+  return url.toString();
+}
+
 export class WSClient {
   private ws: WebSocket | null = null;
-  private url = "ws://localhost:8080/connect";
+  private url = getWebSocketUrl();
   private reconnectDelayMs = 500;
   private connectionTimeoutMs = 5000; // 5 second timeout for connection
   private connectionTimeoutId: ReturnType<typeof setTimeout> | null = null;
