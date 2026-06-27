@@ -28,7 +28,6 @@ type config struct {
 var allowedOrigins map[string]struct{}
 
 func main() {
-	// Local convenience only; real environment variables still take priority.
 	_ = godotenv.Load(".env.local", ".env")
 
 	cfg, err := loadConfig()
