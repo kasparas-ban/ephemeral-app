@@ -7,26 +7,85 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/gorilla/websocket"
 	"github.com/joho/godotenv"
 )
 
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:    1024,
+	WriteBufferSize:   1024,
+	EnableCompression: true,
+	CheckOrigin:       checkOrigin,
+}
+
+type config struct {
+	Addr           string
+	AllowedOrigins map[string]struct{}
+}
+
+var allowedOrigins map[string]struct{}
+
+func main() {
+	// Local convenience only; real environment variables still take priority.
+	_ = godotenv.Load(".env.local", ".env")
+
+	cfg, err := loadConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
+	allowedOrigins = cfg.AllowedOrigins
+
+	// Create hub
+	hub := realtime.NewHub()
+	go hub.Run()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/health", healthHandler)
+	mux.HandleFunc("/connect", websocketHandler(hub))
+
+	fmt.Println("Go API listening on", cfg.Addr)
+	log.Fatal(http.ListenAndServe(cfg.Addr, mux))
+}
+
+func loadConfig() (config, error) {
+	port := strings.TrimSpace(os.Getenv("PORT"))
+	if port == "" {
+		return config{}, fmt.Errorf("PORT is not set")
+	}
+
+	origins := parseAllowedOrigins(os.Getenv("ALLOWED_ORIGINS"))
+	if len(origins) == 0 {
+		return config{}, fmt.Errorf("ALLOWED_ORIGINS is not set")
+	}
+
+	return config{
+		Addr:           ":" + port,
+		AllowedOrigins: origins,
+	}, nil
+}
+
+func parseAllowedOrigins(value string) map[string]struct{} {
+	origins := make(map[string]struct{})
+	for origin := range strings.SplitSeq(value, ",") {
+		origin = strings.TrimSpace(origin)
+		if origin != "" {
+			origins[origin] = struct{}{}
+		}
+	}
+
+	return origins
+}
+
 func checkOrigin(r *http.Request) bool {
-	// origin := r.Header.Get("Origin")
-	return true
-	// if origin == "" {
-	// 	return false
-	// }
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		return false
+	}
 
-	// // Allow explicit list via env
-	// for a := range strings.SplitSeq(os.Getenv("ALLOWED_ORIGINS"), ",") {
-	// 	if strings.TrimSpace(a) == origin {
-	// 		return true
-	// 	}
-	// }
-
-	// return false
+	_, ok := allowedOrigins[origin]
+	return ok
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
@@ -50,33 +109,4 @@ func websocketHandler(hub *realtime.Hub) http.HandlerFunc {
 		go client.WritePump()
 		go client.ReadPump()
 	}
-}
-
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:    1024,
-	WriteBufferSize:   1024,
-	EnableCompression: true,
-	CheckOrigin:       checkOrigin,
-}
-
-func main() {
-	// Load env files
-	_ = godotenv.Load(".env")
-	_ = godotenv.Overload(".env.local")
-
-	// Create hub
-	hub := realtime.NewHub()
-	go hub.Run()
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("/health", healthHandler)
-	mux.HandleFunc("/connect", websocketHandler(hub))
-
-	port := os.Getenv("PORT")
-	if port == "" {
-		log.Fatal("PORT is not set")
-	}
-	addr := "localhost:" + port
-	fmt.Println("Go API listening on", addr)
-	log.Fatal(http.ListenAndServe(addr, mux))
 }

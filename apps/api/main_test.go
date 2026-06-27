@@ -38,7 +38,7 @@ func TestHealthHandler(t *testing.T) {
 }
 
 func TestIntegration_WebsocketTypingFlow(t *testing.T) {
-	t.Setenv("ALLOWED_ORIGINS", "http://example.com")
+	setAllowedOriginsForTest(t, "http://example.com")
 
 	h := realtime.NewHub()
 	go h.Run()
