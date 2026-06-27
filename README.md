@@ -95,6 +95,14 @@ pnpm test:e2e:debug    # headed debug mode
 pnpm test:e2e:report   # open the latest HTML report
 ```
 
+Playwright ignores server stdout/stderr by default so routine websocket and
+framework logs do not crowd the reporter output. To show those logs while
+debugging, run:
+
+```bash
+E2E_WEB_SERVER_LOGS=1 pnpm test:e2e
+```
+
 Defaults:
 
 ```bash

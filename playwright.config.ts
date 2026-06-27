@@ -6,6 +6,7 @@ const host = process.env.E2E_HOST ?? "127.0.0.1";
 
 const webUrl = `http://${host}:${webPort}`;
 const apiUrl = `http://${host}:${apiPort}`;
+const webServerOutput = process.env.E2E_WEB_SERVER_LOGS === "1" ? "pipe" : "ignore";
 
 export default defineConfig({
   testDir: "./e2e/specs",
@@ -28,15 +29,28 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: `cd apps/api && PORT=${apiPort} ALLOWED_ORIGINS=${webUrl} go run .`,
+      command: "go run .",
+      cwd: "apps/api",
+      env: {
+        PORT: String(apiPort),
+        ALLOWED_ORIGINS: webUrl,
+      },
       url: `${apiUrl}/health`,
       reuseExistingServer: !process.env.CI,
+      stdout: webServerOutput,
+      stderr: webServerOutput,
       timeout: 30_000,
     },
     {
-      command: `NEXT_PUBLIC_API_URL=${apiUrl} pnpm --dir apps/web exec next build && NEXT_PUBLIC_API_URL=${apiUrl} pnpm --dir apps/web exec next start --hostname ${host} --port ${webPort}`,
+      command: `pnpm exec next build && pnpm exec next start --hostname ${host} --port ${webPort}`,
+      cwd: "apps/web",
+      env: {
+        NEXT_PUBLIC_API_URL: apiUrl,
+      },
       url: webUrl,
       reuseExistingServer: !process.env.CI,
+      stdout: webServerOutput,
+      stderr: webServerOutput,
       timeout: 120_000,
     },
   ],
