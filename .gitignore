@@ -47,3 +47,6 @@ next-env.d.ts
 # turbo & api build
 .turbo
 apps/api/bin/
+
+# claude code
+.claude/

@@ -111,8 +111,9 @@ E2E_API_PORT=18080
 E2E_HOST=127.0.0.1
 ```
 
-## Notes
+## Tasks
 
-- Workspace packages are defined in `pnpm-workspace.yaml` (`apps/*`, `packages/*`).
-- Turborepo tasks are configured in `turbo.json` (`dev`, `build`, `lint`, `typecheck`).
-- The Next.js app (`apps/web`) uses `@/*` path alias.
+[ ] - Graceful shutdown
+[ ] - Structured logging
+[ ] - Protobuf implementation
+[ ] - Stress testing
