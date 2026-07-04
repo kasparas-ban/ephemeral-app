@@ -1,4 +1,6 @@
 export type Point = { x: number; y: number };
+export type Size = { width: number; height: number };
+export type Rect = Point & Size;
 
 export type SpatialOptions = {
   /** Stable seed for the session. Same seed + id ⇒ same point. */
@@ -10,9 +12,20 @@ export type SpatialOptions = {
   padding?: number;
 };
 
+export type LayoutUsersOptions = {
+  userIds: string[];
+  bounds: Rect;
+  itemSize: Size;
+  reservedRects?: Rect[];
+  gap?: number;
+};
+
 const DEFAULT_WIDTH = 1200;
 const DEFAULT_HEIGHT = 720;
 const DEFAULT_PADDING = 80;
+const DEFAULT_GAP = 32;
+const MAX_RANDOM_CANDIDATES = 160;
+const GRID_STEP = 48;
 
 export class SpatialIndex {
   private readonly seed: number;
@@ -44,8 +57,84 @@ export class SpatialIndex {
     return point;
   }
 
+  layoutUsers({
+    userIds,
+    bounds,
+    itemSize,
+    reservedRects = [],
+    gap = DEFAULT_GAP,
+  }: LayoutUsersOptions): Map<string, Point> {
+    const activeUserIds = new Set(userIds);
+    for (const userId of this.positions.keys()) {
+      if (!activeUserIds.has(userId)) this.release(userId);
+    }
+
+    const placements = new Map<string, Point>();
+    const occupiedRects = [...reservedRects];
+    const uniqueUserIds = [...new Set(userIds)].sort();
+
+    for (const userId of uniqueUserIds) {
+      const existing = this.positions.get(userId);
+      if (existing) {
+        const existingRect = rectFromPoint(existing, itemSize);
+        if (
+          fits(existingRect, bounds) &&
+          !overlapsAny(existingRect, occupiedRects, gap)
+        ) {
+          placements.set(userId, existing);
+          occupiedRects.push(existingRect);
+          continue;
+        }
+      }
+
+      const point = this.findOpenPoint(
+        userId,
+        bounds,
+        itemSize,
+        occupiedRects,
+        gap
+      );
+      this.positions.set(userId, point);
+      placements.set(userId, point);
+      occupiedRects.push(rectFromPoint(point, itemSize));
+    }
+
+    return placements;
+  }
+
   release(userId: string): void {
     this.positions.delete(userId);
+  }
+
+  private findOpenPoint(
+    userId: string,
+    bounds: Rect,
+    itemSize: Size,
+    occupiedRects: Rect[],
+    gap: number
+  ): Point {
+    const candidates = [
+      ...randomCandidates(`${this.seed}:${userId}:layout`, bounds, itemSize),
+      ...gridCandidates(`${this.seed}:${userId}:grid`, bounds, itemSize),
+    ];
+
+    for (const candidate of candidates) {
+      const candidateRect = rectFromPoint(candidate, itemSize);
+      if (
+        fits(candidateRect, bounds) &&
+        !overlapsAny(candidateRect, occupiedRects, gap)
+      ) {
+        return candidate;
+      }
+    }
+
+    return leastOverlappingCandidate(
+      candidates,
+      occupiedRects,
+      itemSize,
+      bounds,
+      gap
+    );
   }
 }
 
@@ -87,4 +176,123 @@ function randomSeed(): number {
     return c.getRandomValues(new Uint32Array(1))[0] >>> 0;
   }
   return Math.floor(Math.random() * 0xffffffff) >>> 0;
+}
+
+function rectFromPoint(point: Point, size: Size): Rect {
+  return { x: point.x, y: point.y, width: size.width, height: size.height };
+}
+
+function fits(rect: Rect, bounds: Rect): boolean {
+  return (
+    rect.x >= bounds.x &&
+    rect.y >= bounds.y &&
+    rect.x + rect.width <= bounds.x + bounds.width &&
+    rect.y + rect.height <= bounds.y + bounds.height
+  );
+}
+
+function overlapsAny(rect: Rect, occupiedRects: Rect[], gap: number): boolean {
+  return occupiedRects.some((occupied) =>
+    intersects(inflate(rect, gap), occupied)
+  );
+}
+
+function intersects(a: Rect, b: Rect): boolean {
+  return !(
+    a.x + a.width <= b.x ||
+    b.x + b.width <= a.x ||
+    a.y + a.height <= b.y ||
+    b.y + b.height <= a.y
+  );
+}
+
+function inflate(rect: Rect, amount: number): Rect {
+  return {
+    x: rect.x - amount,
+    y: rect.y - amount,
+    width: rect.width + amount * 2,
+    height: rect.height + amount * 2,
+  };
+}
+
+function* randomCandidates(
+  seedInput: string,
+  bounds: Rect,
+  itemSize: Size
+): Generator<Point> {
+  const rand = mulberry32(hashString(seedInput));
+  const maxX = Math.max(bounds.x, bounds.x + bounds.width - itemSize.width);
+  const maxY = Math.max(bounds.y, bounds.y + bounds.height - itemSize.height);
+  const usableW = Math.max(0, maxX - bounds.x);
+  const usableH = Math.max(0, maxY - bounds.y);
+
+  for (let i = 0; i < MAX_RANDOM_CANDIDATES; i++) {
+    yield {
+      x: bounds.x + rand() * usableW,
+      y: bounds.y + rand() * usableH,
+    };
+  }
+}
+
+function gridCandidates(
+  seedInput: string,
+  bounds: Rect,
+  itemSize: Size
+): Point[] {
+  const points: Point[] = [];
+  const maxX = bounds.x + bounds.width - itemSize.width;
+  const maxY = bounds.y + bounds.height - itemSize.height;
+
+  for (let y = bounds.y; y <= maxY; y += GRID_STEP) {
+    for (let x = bounds.x; x <= maxX; x += GRID_STEP) {
+      points.push({ x, y });
+    }
+  }
+
+  const rand = mulberry32(hashString(seedInput));
+  return points
+    .map((point) => ({ point, sort: rand() }))
+    .sort((a, b) => a.sort - b.sort)
+    .map(({ point }) => point);
+}
+
+function leastOverlappingCandidate(
+  candidates: Point[],
+  occupiedRects: Rect[],
+  itemSize: Size,
+  bounds: Rect,
+  gap: number
+): Point {
+  let best = candidates[0] ?? { x: bounds.x, y: bounds.y };
+  let bestScore = Number.POSITIVE_INFINITY;
+
+  for (const candidate of candidates) {
+    const candidateRect = rectFromPoint(candidate, itemSize);
+    if (!fits(candidateRect, bounds)) continue;
+
+    const score = occupiedRects.reduce(
+      (total, occupied) =>
+        total + intersectionArea(inflate(candidateRect, gap), occupied),
+      0
+    );
+
+    if (score < bestScore) {
+      best = candidate;
+      bestScore = score;
+    }
+  }
+
+  return best;
+}
+
+function intersectionArea(a: Rect, b: Rect): number {
+  const width = Math.max(
+    0,
+    Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x)
+  );
+  const height = Math.max(
+    0,
+    Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y)
+  );
+  return width * height;
 }
