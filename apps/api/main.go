@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 
@@ -68,8 +69,7 @@ func loadConfig() (config, error) {
 func parseAllowedOrigins(value string) map[string]struct{} {
 	origins := make(map[string]struct{})
 	for origin := range strings.SplitSeq(value, ",") {
-		origin = strings.TrimSpace(origin)
-		if origin != "" {
+		if origin, ok := normalizeOrigin(origin); ok {
 			origins[origin] = struct{}{}
 		}
 	}
@@ -78,13 +78,35 @@ func parseAllowedOrigins(value string) map[string]struct{} {
 }
 
 func checkOrigin(r *http.Request) bool {
-	origin := r.Header.Get("Origin")
-	if origin == "" {
+	origin, ok := normalizeOrigin(r.Header.Get("Origin"))
+	if !ok {
 		return false
 	}
 
-	_, ok := allowedOrigins[origin]
-	return ok
+	if _, ok := allowedOrigins[origin]; ok {
+		return true
+	}
+
+	log.Printf("Rejected WebSocket origin %q; add it to ALLOWED_ORIGINS to allow this client", origin)
+	return false
+}
+
+func normalizeOrigin(value string) (string, bool) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "", false
+	}
+
+	u, err := url.Parse(value)
+	if err != nil || u.Scheme == "" || u.Host == "" {
+		return "", false
+	}
+
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return "", false
+	}
+
+	return u.Scheme + "://" + u.Host, true
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {

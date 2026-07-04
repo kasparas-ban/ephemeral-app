@@ -64,6 +64,24 @@ func TestCheckOrigin(t *testing.T) {
 			t.Fatalf("expected true, got false")
 		}
 	})
+
+	t.Run("allowed origin normalizes trailing slash", func(t *testing.T) {
+		setAllowedOriginsForTest(t, "https://app.example.com/")
+		r := httptest.NewRequest("GET", "http://example.com/connect", nil)
+		r.Header.Set("Origin", "https://app.example.com")
+		if got := checkOrigin(r); !got {
+			t.Fatalf("expected true, got false")
+		}
+	})
+
+	t.Run("rejects malformed origin", func(t *testing.T) {
+		setAllowedOriginsForTest(t, "http://localhost:3000")
+		r := httptest.NewRequest("GET", "http://example.com/connect", nil)
+		r.Header.Set("Origin", "not-a-url")
+		if got := checkOrigin(r); got {
+			t.Fatalf("expected false, got true")
+		}
+	})
 }
 
 func TestLoadConfig(t *testing.T) {
@@ -104,6 +122,24 @@ func TestLoadConfig(t *testing.T) {
 
 		if _, ok := cfg.AllowedOrigins["http://localhost:3000"]; !ok {
 			t.Fatal("expected http://localhost:3000 origin")
+		}
+	})
+
+	t.Run("normalizes allowed origins", func(t *testing.T) {
+		t.Setenv("PORT", "8080")
+		t.Setenv("ALLOWED_ORIGINS", " https://app.example.com/ignored-path , http://localhost:3000/ ")
+
+		cfg, err := loadConfig()
+		if err != nil {
+			t.Fatalf("load config: %v", err)
+		}
+
+		if _, ok := cfg.AllowedOrigins["https://app.example.com"]; !ok {
+			t.Fatal("expected normalized https://app.example.com origin")
+		}
+
+		if _, ok := cfg.AllowedOrigins["http://localhost:3000"]; !ok {
+			t.Fatal("expected normalized http://localhost:3000 origin")
 		}
 	})
 }
