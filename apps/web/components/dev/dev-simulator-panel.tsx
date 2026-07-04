@@ -13,7 +13,7 @@ import {
 import { connectedUsersAtom } from "@/stores/stores";
 
 const DEFAULT_COUNT = 3;
-const DEFAULT_CADENCE_MS = 120;
+const DEFAULT_CADENCE_MS = 160;
 
 export default function DevSimulatorPanel() {
   const connectedUsers = useAtomValue(connectedUsersAtom);

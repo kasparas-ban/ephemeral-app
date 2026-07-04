@@ -117,3 +117,5 @@ E2E_HOST=127.0.0.1
 [ ] - Structured logging
 [ ] - Protobuf implementation
 [ ] - Stress testing
+[x] - Dev tools
+[x] - React Compiler
