@@ -143,8 +143,7 @@ const Composition = forwardRef<CompositionHandle, CompositionProps>(
           onBlur={editable ? () => editableRef.current?.focus() : undefined}
           onInput={editable ? onInput : undefined}
           onCompositionEnd={editable ? onInput : undefined}
-          className="relative w-0 h-full outline-none overflow-hidden
-                     text-transparent caret-transparent selection:bg-transparent"
+          className="relative w-0 h-full outline-none overflow-hidden text-transparent caret-transparent selection:bg-transparent"
         />
       </div>
     );

@@ -32,7 +32,7 @@ export default function RemoteEphemeral({
       ref={compositionRef}
       textAtom={textAtom}
       textClassName="text-gray-500"
-      caretClassName="bg-gray-500"
+      caretClassName="bg-gray-400"
       testId="remote-composition"
     />
   );
