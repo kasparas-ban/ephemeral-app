@@ -26,10 +26,22 @@ export type CompositionProps = {
   editable?: boolean;
   onInput?: (e: SyntheticEvent<HTMLDivElement>) => void;
   testId?: string;
+  textClassName?: string;
+  caretClassName?: string;
 };
 
 const Composition = forwardRef<CompositionHandle, CompositionProps>(
-  function Composition({ textAtom, editable = false, onInput, testId }, ref) {
+  function Composition(
+    {
+      textAtom,
+      editable = false,
+      onInput,
+      testId,
+      textClassName,
+      caretClassName,
+    },
+    ref
+  ) {
     const editableRef = useRef<HTMLDivElement>(null);
     const textContainerRef = useRef<HTMLDivElement>(null);
     const animatorRef = useRef<AnimatedText | null>(null);
@@ -102,7 +114,10 @@ const Composition = forwardRef<CompositionHandle, CompositionProps>(
         <div
           ref={textContainerRef}
           data-testid={testId ? `${testId}-text` : "composition-text"}
-          className="absolute pointer-events-none right-[3px] whitespace-nowrap"
+          className={cn(
+            "absolute pointer-events-none right-[3px] whitespace-nowrap",
+            textClassName
+          )}
         />
 
         {/* Custom caret */}
@@ -111,6 +126,7 @@ const Composition = forwardRef<CompositionHandle, CompositionProps>(
             ref={caretRef}
             className={cn(
               "w-0.5 border-r-2 bg-gray-600 h-full border-none",
+              caretClassName,
               styles["caret"]
             )}
           />
