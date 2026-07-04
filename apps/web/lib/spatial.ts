@@ -118,15 +118,14 @@ export class SpatialIndex {
       ...gridCandidates(`${this.seed}:${userId}:grid`, bounds, itemSize),
     ];
 
-    for (const candidate of candidates) {
-      const candidateRect = rectFromPoint(candidate, itemSize);
-      if (
-        fits(candidateRect, bounds) &&
-        !overlapsAny(candidateRect, occupiedRects, gap)
-      ) {
-        return candidate;
-      }
-    }
+    const openCandidate = mostCentralOpenCandidate(
+      candidates,
+      occupiedRects,
+      itemSize,
+      bounds,
+      gap
+    );
+    if (openCandidate) return openCandidate;
 
     return leastOverlappingCandidate(
       candidates,
@@ -256,6 +255,35 @@ function gridCandidates(
     .map(({ point }) => point);
 }
 
+function mostCentralOpenCandidate(
+  candidates: Point[],
+  occupiedRects: Rect[],
+  itemSize: Size,
+  bounds: Rect,
+  gap: number
+): Point | null {
+  let best: Point | null = null;
+  let bestScore = Number.POSITIVE_INFINITY;
+
+  for (const candidate of candidates) {
+    const candidateRect = rectFromPoint(candidate, itemSize);
+    if (
+      !fits(candidateRect, bounds) ||
+      overlapsAny(candidateRect, occupiedRects, gap)
+    ) {
+      continue;
+    }
+
+    const score = centerDistanceScore(candidateRect, bounds);
+    if (score < bestScore) {
+      best = candidate;
+      bestScore = score;
+    }
+  }
+
+  return best;
+}
+
 function leastOverlappingCandidate(
   candidates: Point[],
   occupiedRects: Rect[],
@@ -264,25 +292,43 @@ function leastOverlappingCandidate(
   gap: number
 ): Point {
   let best = candidates[0] ?? { x: bounds.x, y: bounds.y };
-  let bestScore = Number.POSITIVE_INFINITY;
+  let bestOverlapScore = Number.POSITIVE_INFINITY;
+  let bestCenterScore = Number.POSITIVE_INFINITY;
 
   for (const candidate of candidates) {
     const candidateRect = rectFromPoint(candidate, itemSize);
     if (!fits(candidateRect, bounds)) continue;
 
-    const score = occupiedRects.reduce(
+    const overlapScore = occupiedRects.reduce(
       (total, occupied) =>
         total + intersectionArea(inflate(candidateRect, gap), occupied),
       0
     );
+    const centerScore = centerDistanceScore(candidateRect, bounds);
 
-    if (score < bestScore) {
+    if (
+      overlapScore < bestOverlapScore ||
+      (overlapScore === bestOverlapScore && centerScore < bestCenterScore)
+    ) {
       best = candidate;
-      bestScore = score;
+      bestOverlapScore = overlapScore;
+      bestCenterScore = centerScore;
     }
   }
 
   return best;
+}
+
+function centerDistanceScore(rect: Rect, bounds: Rect): number {
+  const rectCenterX = rect.x + rect.width / 2;
+  const rectCenterY = rect.y + rect.height / 2;
+  const boundsCenterX = bounds.x + bounds.width / 2;
+  const boundsCenterY = bounds.y + bounds.height / 2;
+
+  return (
+    Math.pow(rectCenterX - boundsCenterX, 2) +
+    Math.pow(rectCenterY - boundsCenterY, 2)
+  );
 }
 
 function intersectionArea(a: Rect, b: Rect): number {
