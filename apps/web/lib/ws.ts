@@ -2,14 +2,17 @@ import { ClientMessage, ServerMessage } from "./types";
 
 export type ConnectionStatus = "connecting" | "open" | "closed";
 
-const DEFAULT_API_URL = "http://localhost:8080";
 const CONNECT_PATH = "/connect";
 
 export function getWebSocketUrl() {
   const configuredWsUrl = process.env.NEXT_PUBLIC_WS_URL;
   if (configuredWsUrl) return configuredWsUrl;
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API_URL;
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl) {
+    throw new Error("NEXT_PUBLIC_API_URL or NEXT_PUBLIC_WS_URL must be set");
+  }
+
   return webSocketUrlFromApiUrl(apiUrl);
 }
 

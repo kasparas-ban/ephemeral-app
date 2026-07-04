@@ -45,10 +45,19 @@ pnpm --filter web dev   # Next.js (http://localhost:3000)
 pnpm --filter api dev   # Go API with air (http://localhost:8080)
 ```
 
-The web app consumes the API via `NEXT_PUBLIC_API_URL`. This is set in `apps/web/.env.local`:
+The web app consumes the API via `NEXT_PUBLIC_API_URL`. Environment-specific
+defaults live in `apps/web/.env.development` and `apps/web/.env.production`.
+
+Development:
 
 ```bash
 NEXT_PUBLIC_API_URL=http://localhost:8080
+```
+
+Production:
+
+```bash
+NEXT_PUBLIC_API_URL=https://ephemeral-app-api.vercel.app
 ```
 
 ## Build
