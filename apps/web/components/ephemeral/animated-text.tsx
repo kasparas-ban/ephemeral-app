@@ -184,7 +184,7 @@ export default class AnimatedText {
   }
 
   shiftCurrentLine(direction: "left" | "right") {
-    const lineChars = document.querySelectorAll(
+    const lineChars = this.container.querySelectorAll(
       `span[data-char-line="${this.currentLine}"]`
     );
 
