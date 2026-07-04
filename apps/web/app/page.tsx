@@ -1,7 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
-import { atom, useAtomValue } from "jotai";
+import { useAtomValue } from "jotai";
 import { connectedUsersAtom } from "@/stores/stores";
 import WorldCanvas from "@/components/canvas/WorldCanvas";
 import LocalEphemeral from "@/components/ephemeral/local-ephemeral";
@@ -46,8 +45,7 @@ function IncomingEphemerals() {
 }
 
 function IncomingEphemeralItem({ userId }: { userId: string }) {
-  const textAtom = useMemo(() => atom(""), []);
-  return <RemoteEphemeral textAtom={textAtom} userId={userId} />;
+  return <RemoteEphemeral userId={userId} />;
 }
 
 function UserEphemeral() {
