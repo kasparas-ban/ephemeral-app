@@ -1,19 +1,20 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const webPort = Number(process.env.E2E_WEB_PORT ?? 13000);
-const apiPort = Number(process.env.E2E_API_PORT ?? 18080);
+const webPort = Number(process.env.E2E_DEV_WEB_PORT ?? 13010);
+const apiPort = Number(process.env.E2E_DEV_API_PORT ?? 18090);
 const host = process.env.E2E_HOST ?? "127.0.0.1";
 
 const webUrl = `http://${host}:${webPort}`;
 const apiUrl = `http://${host}:${apiPort}`;
-const webServerOutput = process.env.E2E_WEB_SERVER_LOGS === "1" ? "pipe" : "ignore";
+const webServerOutput =
+  process.env.E2E_WEB_SERVER_LOGS === "1" ? "pipe" : "ignore";
 
 export default defineConfig({
   testDir: "./e2e/specs",
-  testIgnore: "**/*.dev.spec.ts",
-  timeout: 20_000,
+  testMatch: "**/*.dev.spec.ts",
+  timeout: 30_000,
   expect: {
-    timeout: 10_000,
+    timeout: 15_000,
   },
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
@@ -43,7 +44,7 @@ export default defineConfig({
       timeout: 30_000,
     },
     {
-      command: `pnpm exec next build && pnpm exec next start --hostname ${host} --port ${webPort}`,
+      command: `pnpm exec next dev --hostname ${host} --port ${webPort}`,
       cwd: "apps/web",
       env: {
         NEXT_PUBLIC_API_URL: apiUrl,
@@ -59,18 +60,6 @@ export default defineConfig({
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
-    },
-    {
-      name: "firefox",
-      use: { ...devices["Desktop Firefox"] },
-    },
-    {
-      name: "webkit",
-      use: { ...devices["Desktop Safari"] },
-    },
-    {
-      name: "mobile-chrome",
-      use: { ...devices["Pixel 7"] },
     },
   ],
 });
