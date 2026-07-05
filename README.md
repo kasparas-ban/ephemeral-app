@@ -60,6 +60,18 @@ Production:
 NEXT_PUBLIC_API_URL=https://ephemeral-app-api.vercel.app
 ```
 
+The Go API also checks the browser `Origin` header before accepting WebSocket
+upgrades. In production, set `ALLOWED_ORIGINS` on the API deployment to the
+exact web app origins that should be allowed, comma separated:
+
+```bash
+ALLOWED_ORIGINS=https://your-web-app.vercel.app,https://www.example.com
+```
+
+Do not set this to the API origin unless the browser page is also served from
+that origin. The value should match `window.location.origin` for the deployed
+web app.
+
 ## Build
 
 - Build everything via Turborepo:
@@ -124,7 +136,14 @@ E2E_HOST=127.0.0.1
 
 [ ] - Graceful shutdown
 [ ] - Structured logging
-[ ] - Protobuf implementation
+[x] - Protobuf implementation
 [ ] - Stress testing
 [x] - Dev tools
 [x] - React Compiler
+[ ] - Setup observability
+[x] - Deploy on Vercel
+[ ] - Custom 404 page
+[ ] - Info panel
+[ ] - Fix scrolling on desktop with arrow keys
+[ ] - Test on Safari & Firefox
+[ ] - Adapt to mobile
