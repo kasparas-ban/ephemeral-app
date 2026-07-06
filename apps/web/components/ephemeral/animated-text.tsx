@@ -2,6 +2,9 @@ const CHAR_BLUR_EASING = "cubic-bezier(0.7, 0, 0.84, 0)";
 const LINE_MOVE_EASING = "cubic-bezier(0.22, 1, 0.36, 1)";
 const CHAR_SHIFT_EASING = "ease-out";
 const CHAR_INTRO_EASING = "ease-out";
+const LIVE_CHAR_SELECTOR = 'span[data-kind="char"]';
+const VISIBLE_CHAR_SELECTOR =
+  'span[data-kind="char"], span[data-kind="char-deleting"]';
 
 export type AnimatedTextOptions = {
   charWidth?: number; // px
@@ -26,7 +29,6 @@ export default class AnimatedText {
   private container: HTMLElement;
   private options: Required<AnimatedTextOptions>;
   private currentLine = 0;
-  private lastLineCharCount = 0;
   private isFlushing = false;
 
   constructor(container: HTMLElement, options?: AnimatedTextOptions) {
@@ -52,21 +54,21 @@ export default class AnimatedText {
     if (this.isFlushing) return null; // ignore input during flush
     if (!char) return null;
 
+    const currentLineCharCount = this.getCurrentLineCharCount();
     const isWhitespace = /\s/.test(char);
 
     const isNewLine = isWhitespace
-      ? this.lastLineCharCount >= this.options.lineCharLimit
+      ? currentLineCharCount >= this.options.lineCharLimit
       : false;
 
     if (isNewLine) {
       this.createLine();
       this.shiftAllLines("up");
       this.currentLine = this.currentLine + 1;
-      this.lastLineCharCount = 0;
       return;
     }
 
-    const isNewWord = isWhitespace || this.lastLineCharCount === 0;
+    const isNewWord = isWhitespace || currentLineCharCount === 0;
 
     // Identify if this line already has a wrapper (i.e. we moved back to edit a previous line)
     const existingLineWrapper = this.container.querySelector(
@@ -113,48 +115,64 @@ export default class AnimatedText {
       this.animateChar(charInnerEl);
       this.startImmediateBlur(charEl, charInnerEl);
     });
-    this.lastLineCharCount += 1;
   }
 
   deleteChar() {
+    const chars = this.getLineChars(this.currentLine);
+
     // If there are characters on the current line, remove the last one
-    if (this.lastLineCharCount > 0) {
-      const chars = Array.from(
-        this.container.querySelectorAll(
-          `span[data-kind="char"][data-char-line="${this.currentLine}"]`
-        )
-      ) as HTMLElement[];
-
-      if (!chars.length) return;
-
+    if (chars.length > 0) {
       const lastChar = chars[chars.length - 1];
       lastChar.setAttribute("data-kind", "char-deleting");
-      this.animateCharDisappearance(lastChar).finished.then(() =>
-        lastChar.remove()
-      );
-      this.lastLineCharCount -= 1;
+      this.animateCharDisappearance(lastChar).finished.then(() => {
+        this.removeCharElement(lastChar);
+      });
       this.shiftCurrentLine("right");
     }
 
-    // No characters on this (empty) line: move back to previous line if exists
-    if (this.lastLineCharCount === 0 && this.currentLine > 0) {
-      this.shiftAllLines("down");
-      this.currentLine -= 1;
-      this.lastLineCharCount = this.getLineCharCount(this.currentLine);
-    }
+    this.moveBackFromEmptyCurrentLines();
+  }
 
-    // If line became empty after removal, treat as removing the line itself
-    if (this.lastLineCharCount === 0 && this.currentLine > 0) {
+  private moveBackFromEmptyCurrentLines() {
+    while (this.currentLine > 0 && this.getCurrentLineCharCount() === 0) {
       this.shiftAllLines("down");
       this.currentLine -= 1;
-      this.lastLineCharCount = this.getLineCharCount(this.currentLine);
     }
   }
 
-  private getLineCharCount(line: number) {
-    return this.container.querySelectorAll(
-      `span[data-kind="char"][data-char-line="${line}"]`
-    ).length;
+  private getCurrentLineCharCount() {
+    return this.getLineChars(this.currentLine).length;
+  }
+
+  private getLineChars(line: number) {
+    return Array.from(
+      this.container.querySelectorAll<HTMLElement>(
+        `${LIVE_CHAR_SELECTOR}[data-char-line="${line}"]`
+      )
+    );
+  }
+
+  private hasVisibleChars(root: ParentNode) {
+    return Boolean(root.querySelector(VISIBLE_CHAR_SELECTOR));
+  }
+
+  private removeCharElement(charEl: HTMLElement) {
+    const wordEl = charEl.closest<HTMLElement>('span[data-type="word"]');
+    const lineEl = charEl.closest<HTMLElement>('span[data-type="line"]');
+
+    charEl.remove();
+
+    if (wordEl && !this.hasVisibleChars(wordEl)) {
+      wordEl.remove();
+    }
+
+    if (lineEl && !this.hasVisibleChars(lineEl)) {
+      lineEl.remove();
+    }
+
+    if (!this.hasVisibleChars(this.container)) {
+      this.currentLine = 0;
+    }
   }
 
   createLine() {
@@ -334,7 +352,11 @@ export default class AnimatedText {
       }
     );
 
-    blurAnim.finished.then(() => outerEl.remove()).catch(() => {});
+    blurAnim.finished
+      .then(() => {
+        this.removeCharElement(outerEl);
+      })
+      .catch(() => {});
   }
 
   private randomFloat(min: number, max: number, minAbs = 0): number {
@@ -418,7 +440,6 @@ export default class AnimatedText {
 
     // Reset bookkeeping
     this.currentLine = 0;
-    this.lastLineCharCount = 0;
     this.isFlushing = false;
   }
 }

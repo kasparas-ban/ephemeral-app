@@ -1,4 +1,4 @@
-import { expect, type Locator, test } from "@playwright/test";
+import { expect, type Locator, type Page, test } from "@playwright/test";
 import { localInput, localText } from "../fixtures/app";
 
 test("home page boots without browser errors", async ({ isMobile, page }) => {
@@ -116,6 +116,35 @@ test("mobile prevents consecutive spaces and double-space punctuation", async ({
     .toBe(" a");
 });
 
+test("expired local text does not force the next space onto a new line", async ({
+  page,
+}) => {
+  await collectLongBlurAnimations(page);
+  await page.goto("/");
+
+  const input = localInput(page);
+  const text = localText(page);
+  const chars = text.locator('span[data-kind="char"]');
+
+  for (const char of "abcdefghijklmno") {
+    await dispatchBeforeInput(input, char);
+  }
+  await expect(chars).toHaveCount(15);
+
+  await expect
+    .poll(async () => countCollectedBlurAnimations(page))
+    .toBe(15);
+  await finishCollectedBlurAnimations(page);
+  await expect(chars).toHaveCount(0);
+
+  for (const char of "hi ") {
+    await dispatchBeforeInput(input, char);
+  }
+
+  await expect(text.locator('span[data-type="line"]')).toHaveCount(0);
+  await expect(chars).toHaveCount(3);
+});
+
 test("api health endpoint is reachable from the E2E environment", async ({
   request,
 }) => {
@@ -138,4 +167,50 @@ async function dispatchBeforeInput(locator: Locator, data: string) {
       }),
     );
   }, data);
+}
+
+async function collectLongBlurAnimations(page: Page) {
+  await page.addInitScript(() => {
+    const testWindow = window as Window & {
+      __ephemeralBlurAnimations?: Animation[];
+    };
+    const originalAnimate = Element.prototype.animate;
+
+    testWindow.__ephemeralBlurAnimations = [];
+    Element.prototype.animate = function (keyframes, options) {
+      const animation = originalAnimate.call(this, keyframes, options);
+      const duration =
+        typeof options === "object" && options !== null
+          ? Number(options.duration)
+          : 0;
+
+      if (duration >= 9_000) {
+        testWindow.__ephemeralBlurAnimations?.push(animation);
+      }
+
+      return animation;
+    };
+  });
+}
+
+async function countCollectedBlurAnimations(page: Page) {
+  return page.evaluate(() => {
+    const testWindow = window as Window & {
+      __ephemeralBlurAnimations?: Animation[];
+    };
+
+    return testWindow.__ephemeralBlurAnimations?.length ?? 0;
+  });
+}
+
+async function finishCollectedBlurAnimations(page: Page) {
+  await page.evaluate(() => {
+    const testWindow = window as Window & {
+      __ephemeralBlurAnimations?: Animation[];
+    };
+
+    testWindow.__ephemeralBlurAnimations?.forEach((animation) => {
+      animation.finish();
+    });
+  });
 }

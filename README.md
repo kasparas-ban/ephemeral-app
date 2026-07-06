@@ -148,3 +148,6 @@ E2E_HOST=127.0.0.1
 [ ] - Test on Safari & Firefox
 [ ] - Adapt to mobile
 [ ] - Allow letter symbols only (no emojis)
+[ ] - Limit to 3 connected clients max
+[ ] - Predefine connected client positions
+[ ] - Add an info screen
