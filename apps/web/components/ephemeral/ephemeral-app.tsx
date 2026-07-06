@@ -22,6 +22,7 @@ const EPHEMERAL_GAP = 36;
 const EPHEMERAL_SLOT_MAX_SIZE: Size = { width: 240, height: 136 };
 const EPHEMERAL_CARET_INSET_RIGHT = 40;
 const KEYBOARD_INPUT_GAP = 20;
+const KEYBOARD_INPUT_LEFT_OFFSET_INCREASE = 24;
 
 export default function EphemeralApp() {
   useVisibleViewport();
@@ -176,7 +177,7 @@ function LocalCompositionAnchor({
     <div
       className={
         isKeyboardOpen
-          ? "absolute pointer-events-auto bottom-0"
+          ? "absolute pointer-events-auto bottom-0 flex"
           : "absolute pointer-events-auto top-1/2 -translate-y-1/2"
       }
       style={{
@@ -213,15 +214,24 @@ function createLocalRect(
   isKeyboardOpen: boolean
 ): Rect {
   const bottomInset = isKeyboardOpen ? KEYBOARD_INPUT_GAP : CANVAS_PADDING;
+  const centeredX =
+    size.width / 2 - slotSize.width + EPHEMERAL_CARET_INSET_RIGHT;
+  const keyboardOpenX =
+    size.width -
+    slotSize.width -
+    KEYBOARD_INPUT_GAP +
+    EPHEMERAL_CARET_INSET_RIGHT -
+    KEYBOARD_INPUT_LEFT_OFFSET_INCREASE;
+  const x = isKeyboardOpen ? keyboardOpenX : centeredX;
+  const maxX = isKeyboardOpen
+    ? keyboardOpenX
+    : size.width - slotSize.width - CANVAS_PADDING;
 
   return {
     x: clamp(
-      size.width / 2 - slotSize.width + EPHEMERAL_CARET_INSET_RIGHT,
+      x,
       CANVAS_PADDING,
-      Math.max(
-        CANVAS_PADDING,
-        size.width - slotSize.width - CANVAS_PADDING
-      )
+      Math.max(CANVAS_PADDING, maxX)
     ),
     y: clamp(
       isKeyboardOpen
