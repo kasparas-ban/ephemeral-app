@@ -1,7 +1,7 @@
-import { expect, test } from "@playwright/test";
-import { localInput } from "../fixtures/app";
+import { expect, type Locator, test } from "@playwright/test";
+import { localInput, localText } from "../fixtures/app";
 
-test("home page boots without browser errors", async ({ page }) => {
+test("home page boots without browser errors", async ({ isMobile, page }) => {
   const consoleErrors: string[] = [];
   const failedRequests: string[] = [];
 
@@ -17,7 +17,11 @@ test("home page boots without browser errors", async ({ page }) => {
   await page.goto("/");
 
   await expect(page.getByTestId("local-composition")).toBeVisible();
-  await expect(localInput(page)).toBeFocused();
+  if (isMobile) {
+    await expect(localInput(page)).not.toBeFocused();
+  } else {
+    await expect(localInput(page)).toBeFocused();
+  }
   expect(consoleErrors).toEqual([]);
   expect(failedRequests).toEqual([]);
 });
@@ -49,6 +53,34 @@ test("mobile shows Start typing while the virtual keyboard is closed", async ({
   await expect(localInput(page)).toBeFocused();
 });
 
+test("mobile prevents consecutive spaces and double-space punctuation", async ({
+  isMobile,
+  page,
+}) => {
+  test.skip(!isMobile, "mobile-only keyboard behavior");
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "Start typing" }).click();
+
+  const input = localInput(page);
+  const chars = localText(page).locator('span[data-kind="char"]');
+
+  await dispatchBeforeInput(input, " ");
+  await expect(chars).toHaveCount(1);
+
+  await dispatchBeforeInput(input, " ");
+  await expect(chars).toHaveCount(1);
+
+  await dispatchBeforeInput(input, ".");
+  await expect(chars).toHaveCount(1);
+
+  await dispatchBeforeInput(input, "a");
+  await expect(chars).toHaveCount(2);
+  await expect
+    .poll(async () => localText(page).textContent())
+    .toBe(" a");
+});
+
 test("api health endpoint is reachable from the E2E environment", async ({
   request,
 }) => {
@@ -59,3 +91,16 @@ test("api health endpoint is reachable from the E2E environment", async ({
   expect(response.headers()["content-type"]).toMatch(/application\/json/);
   expect(await response.json()).toEqual({ status: "ok" });
 });
+
+async function dispatchBeforeInput(locator: Locator, data: string) {
+  await locator.evaluate((element, value) => {
+    element.dispatchEvent(
+      new InputEvent("beforeinput", {
+        inputType: "insertText",
+        data: value,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+  }, data);
+}

@@ -87,6 +87,7 @@ function EphemeralLayer({
         <LocalCompositionAnchor isKeyboardOpen={isKeyboardOpen}>
           <LocalEphemeral
             manualKeyboardActivation={hasOnScreenKeyboard}
+            preventConsecutiveSpaces={hasOnScreenKeyboard}
             showStartTypingButton={hasOnScreenKeyboard && !isKeyboardOpen}
           />
         </LocalCompositionAnchor>

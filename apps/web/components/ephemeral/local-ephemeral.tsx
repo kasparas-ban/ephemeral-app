@@ -20,17 +20,21 @@ const localText = atom("");
  */
 type LocalEphemeralProps = {
   manualKeyboardActivation?: boolean;
+  preventConsecutiveSpaces?: boolean;
   showStartTypingButton?: boolean;
 };
 
 export default function LocalEphemeral({
   manualKeyboardActivation = false,
+  preventConsecutiveSpaces = false,
   showStartTypingButton = false,
 }: LocalEphemeralProps) {
   const compositionRef = useRef<CompositionHandle>(null);
+  const lastAcceptedActionRef = useRef<TypingAction | null>(null);
   const wsClient = useAtomValue(wsClientAtom);
 
   const applyAction = (action: TypingAction) => {
+    lastAcceptedActionRef.current = action;
     compositionRef.current?.apply(action);
     wsClient?.send(actionToClientMessage(action));
   };
@@ -38,6 +42,14 @@ export default function LocalEphemeral({
   const applyInputEvent = (event: InputEvent) => {
     const action = inputEventToAction(event);
     if (!action) return;
+    if (
+      preventConsecutiveSpaces && shouldSuppressMobileSpaceInput(
+        action,
+        lastAcceptedActionRef.current,
+      )
+    ) {
+      return;
+    }
 
     applyAction(action);
   };
@@ -96,4 +108,24 @@ export default function LocalEphemeral({
       )}
     </div>
   );
+}
+
+function shouldSuppressMobileSpaceInput(
+  action: TypingAction,
+  lastAcceptedAction: TypingAction | null,
+) {
+  if (action.kind !== "char") return false;
+  if (!lastActionWasSpace(lastAcceptedAction)) return false;
+
+  if (startsWithSpace(action.char)) return true;
+
+  return action.char === "." || action.char === ". ";
+}
+
+function startsWithSpace(value: string) {
+  return value.startsWith(" ") || value.startsWith("\u00a0");
+}
+
+function lastActionWasSpace(action: TypingAction | null) {
+  return action?.kind === "char" && startsWithSpace(action.char);
 }
