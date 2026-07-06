@@ -20,6 +20,41 @@ test("typing in one browser renders in another browser", async ({ browser }) => 
   await closeUser(first);
 });
 
+test("typing input accepts only printable keyboard characters", async ({ browser }) => {
+  const { first, second } = await openTwoUsers(browser);
+  const mixedText = "A\u{1F642}z\u00e90\u20149\u201c ~!@\u4e2d";
+
+  await localInput(first.page).evaluate((element) => {
+    element.dispatchEvent(
+      new InputEvent("beforeinput", {
+        inputType: "insertFromPaste",
+        data: "paste",
+        bubbles: true,
+        cancelable: true,
+      })
+    );
+  });
+  await expect(remoteText(second.page)).toHaveText("");
+
+  await localInput(first.page).evaluate((element, text) => {
+    for (const char of Array.from(text)) {
+      element.dispatchEvent(
+        new InputEvent("beforeinput", {
+          inputType: "insertText",
+          data: char,
+          bubbles: true,
+          cancelable: true,
+        })
+      );
+    }
+  }, mixedText);
+
+  await expectCompositionText(second.page, "Az09 ~!@");
+
+  await closeUser(second);
+  await closeUser(first);
+});
+
 test("backspace and enter relay as delete and clear actions", async ({ browser }) => {
   const { first, second } = await openTwoUsers(browser);
 

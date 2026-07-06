@@ -1,4 +1,5 @@
 import { ClientMessage } from "@/lib/types";
+import { sanitizeKeyboardText } from "@/lib/typing";
 import { ConnectionStatus, WSClient } from "@/lib/ws";
 
 export const DEV_BOT_MAX_COUNT = 10;
@@ -149,7 +150,7 @@ export class DevBotController {
 export function normalizeDevBotPhrases(value: string) {
   const phrases = value
     .split("\n")
-    .map((line) => line.trim())
+    .map((line) => sanitizeKeyboardText(line).trim())
     .filter(Boolean);
 
   return phrases.length > 0 ? phrases : DEFAULT_DEV_BOT_PHRASES;

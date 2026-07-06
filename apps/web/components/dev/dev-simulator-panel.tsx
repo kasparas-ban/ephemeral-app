@@ -12,6 +12,7 @@ import {
   DevBotSnapshot,
   normalizeDevBotPhrases,
 } from "@/lib/dev/dev-bot-controller";
+import { sanitizeKeyboardText } from "@/lib/typing";
 import { connectedUsersAtom } from "@/stores/stores";
 
 const DEFAULT_COUNT = 3;
@@ -160,7 +161,13 @@ export default function DevSimulatorPanel() {
         <textarea
           data-testid="dev-simulator-phrases"
           value={phrasesText}
-          onChange={(event) => setPhrasesText(event.target.value)}
+          onChange={(event) =>
+            setPhrasesText(
+              sanitizeKeyboardText(event.target.value, {
+                allowLineBreaks: true,
+              }),
+            )
+          }
           rows={4}
           className="resize-none border border-neutral-300 p-2 text-xs"
         />
