@@ -20,12 +20,21 @@ export default function LocalEphemeral() {
   const compositionRef = useRef<CompositionHandle>(null);
   const wsClient = useAtomValue(wsClientAtom);
 
-  const handleInput = (e: SyntheticEvent<HTMLDivElement>) => {
-    const action = inputEventToAction(e.nativeEvent as InputEvent);
+  const applyInputEvent = (event: InputEvent) => {
+    const action = inputEventToAction(event);
     if (!action) return;
 
     compositionRef.current?.apply(action);
     wsClient?.send(actionToClientMessage(action));
+  };
+
+  const handleInput = (e: SyntheticEvent<HTMLDivElement>) => {
+    applyInputEvent(e.nativeEvent as InputEvent);
+  };
+
+  const handleBeforeInput = (event: InputEvent) => {
+    if (event.cancelable) event.preventDefault();
+    applyInputEvent(event);
   };
 
   return (
@@ -34,6 +43,7 @@ export default function LocalEphemeral() {
       textAtom={localText}
       editable
       testId="local-composition"
+      onBeforeInput={handleBeforeInput}
       onInput={handleInput}
     />
   );

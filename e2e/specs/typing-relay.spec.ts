@@ -36,6 +36,28 @@ test("backspace and enter relay as delete and clear actions", async ({ browser }
   await closeUser(first);
 });
 
+test("beforeinput delete relays as a back action", async ({ browser }) => {
+  const { first, second } = await openTwoUsers(browser);
+
+  await localInput(first.page).pressSequentially("hey");
+  await expectCompositionText(second.page, "hey");
+
+  await localInput(first.page).evaluate((element) => {
+    element.dispatchEvent(
+      new InputEvent("beforeinput", {
+        inputType: "deleteContentBackward",
+        data: null,
+        bubbles: true,
+        cancelable: true,
+      })
+    );
+  });
+  await expectCompositionText(second.page, "he");
+
+  await closeUser(second);
+  await closeUser(first);
+});
+
 test("remote typing does not mutate the local user's own composition", async ({ browser }) => {
   const { first, second } = await openTwoUsers(browser);
 

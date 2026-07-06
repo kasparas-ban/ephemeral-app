@@ -28,6 +28,7 @@ export type CompositionProps = {
   ref?: Ref<CompositionHandle>;
   textAtom: PrimitiveAtom<string>;
   editable?: boolean;
+  onBeforeInput?: (e: InputEvent) => void;
   onInput?: (e: SyntheticEvent<HTMLDivElement>) => void;
   testId?: string;
   textClassName?: string;
@@ -38,6 +39,7 @@ export default function Composition({
   ref,
   textAtom,
   editable = false,
+  onBeforeInput,
   onInput,
   testId,
   textClassName,
@@ -109,6 +111,21 @@ export default function Composition({
       animatorRef.current = null;
     };
   }, [editable]);
+
+  // Required to make char deletion work on mobile
+  useEffect(() => {
+    const editableEl = editableRef.current;
+    if (!editable || !editableEl || !onBeforeInput) return;
+
+    const handleBeforeInput = (event: Event) => {
+      onBeforeInput(event as InputEvent);
+    };
+
+    editableEl.addEventListener("beforeinput", handleBeforeInput);
+    return () => {
+      editableEl.removeEventListener("beforeinput", handleBeforeInput);
+    };
+  }, [editable, onBeforeInput]);
 
   return (
     <div className="relative flex text-xl h-lh" data-testid={testId}>
