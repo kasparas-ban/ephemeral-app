@@ -180,6 +180,10 @@ export default function Composition({
         contentEditable={editable}
         role={editable ? "textbox" : undefined}
         aria-label={editable ? "Invisible input" : undefined}
+        autoCapitalize="none"
+        autoCorrect="off"
+        enterKeyHint="done"
+        inputMode="text"
         spellCheck={false}
         onBlur={editable && keepFocus ? focusEditable : undefined}
         onInput={editable ? onInput : undefined}
