@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+
+import { useSetAtom } from "jotai";
 
 import type { Rect } from "@/lib/spatial";
+import { visibleViewportAtom } from "@/stores/viewport";
 
-const DEFAULT_VIEWPORT_RECT: Rect = { x: 0, y: 0, width: 1200, height: 720 };
 const EMPTY_KEYBOARD_RECT: Rect = { x: 0, y: 0, width: 0, height: 0 };
 const KEYBOARD_VIEWPORT_THRESHOLD = 80;
 
@@ -15,18 +17,8 @@ type NavigatorWithVirtualKeyboard = Navigator & {
   virtualKeyboard?: VirtualKeyboard;
 };
 
-export type VisibleViewport = {
-  rect: Rect;
-  isKeyboardOpen: boolean;
-  hasOnScreenKeyboard: boolean;
-};
-
-export default function useVisibleViewport(): VisibleViewport {
-  const [viewport, setViewport] = useState<VisibleViewport>({
-    rect: DEFAULT_VIEWPORT_RECT,
-    isKeyboardOpen: false,
-    hasOnScreenKeyboard: false,
-  });
+export default function useVisibleViewport() {
+  const setVisibleViewport = useSetAtom(visibleViewportAtom);
 
   useEffect(() => {
     const keyboard = getVirtualKeyboard();
@@ -42,14 +34,15 @@ export default function useVisibleViewport(): VisibleViewport {
         keyboardRect,
       );
       const hasOnScreenKeyboard = canShowOnScreenKeyboard();
-
-      setViewport({
-        rect: usableRect,
-        isKeyboardOpen: isOnScreenKeyboardOpen(
-          keyboardRect,
-          hasOnScreenKeyboard,
-        ),
+      const isKeyboardOpen = isOnScreenKeyboardOpen(
+        keyboardRect,
         hasOnScreenKeyboard,
+      );
+
+      setVisibleViewport({
+        rect: usableRect,
+        hasOnScreenKeyboard,
+        isKeyboardOpen,
       });
     };
 
@@ -69,9 +62,7 @@ export default function useVisibleViewport(): VisibleViewport {
       visualViewport?.removeEventListener("scroll", syncViewport);
       keyboard?.removeEventListener("geometrychange", syncViewport);
     };
-  }, []);
-
-  return viewport;
+  }, [setVisibleViewport]);
 }
 
 export function createUsableViewportRect(

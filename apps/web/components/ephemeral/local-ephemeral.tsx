@@ -8,30 +8,23 @@ import { atom, useAtomValue } from "jotai";
 import type { TypingAction } from "@/lib/types";
 import { actionToClientMessage, inputEventToAction } from "@/lib/typing";
 import { wsClientAtom } from "@/stores/stores";
+import {
+  hasOnScreenKeyboardAtom,
+  isKeyboardOpenAtom,
+} from "@/stores/viewport";
 
 import Composition, { type CompositionHandle } from "./composition";
 
 // Mirrors the local user's text; write-only today, scoped to this module.
 const localText = atom("");
 
-/**
- * Keyboard adapter. Decodes the editable's `InputEvent`s into typing actions,
- * applies them to the Composition, and emits them to the wire.
- */
-type LocalEphemeralProps = {
-  manualKeyboardActivation?: boolean;
-  preventConsecutiveSpaces?: boolean;
-  showStartTypingButton?: boolean;
-};
-
-export default function LocalEphemeral({
-  manualKeyboardActivation = false,
-  preventConsecutiveSpaces = false,
-  showStartTypingButton = false,
-}: LocalEphemeralProps) {
+export default function LocalEphemeral() {
   const compositionRef = useRef<CompositionHandle>(null);
   const lastAcceptedActionRef = useRef<TypingAction | null>(null);
+  const hasOnScreenKeyboard = useAtomValue(hasOnScreenKeyboardAtom);
+  const isKeyboardOpen = useAtomValue(isKeyboardOpenAtom);
   const wsClient = useAtomValue(wsClientAtom);
+  const showStartTypingButton = hasOnScreenKeyboard && !isKeyboardOpen;
 
   const applyAction = (action: TypingAction) => {
     lastAcceptedActionRef.current = action;
@@ -43,7 +36,7 @@ export default function LocalEphemeral({
     const action = inputEventToAction(event);
     if (!action) return;
     if (
-      preventConsecutiveSpaces && shouldSuppressMobileSpaceInput(
+      hasOnScreenKeyboard && shouldSuppressMobileSpaceInput(
         action,
         lastAcceptedActionRef.current,
       )
@@ -88,8 +81,8 @@ export default function LocalEphemeral({
         ref={compositionRef}
         textAtom={localText}
         editable
-        autoFocus={!manualKeyboardActivation}
-        keepFocus={!manualKeyboardActivation}
+        autoFocus={!hasOnScreenKeyboard}
+        keepFocus={!hasOnScreenKeyboard}
         testId="local-composition"
         onBeforeInput={handleBeforeInput}
         onInput={handleInput}

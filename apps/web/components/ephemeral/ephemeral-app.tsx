@@ -12,6 +12,10 @@ import useVisibleViewport from "@/hooks/useVisibleViewport";
 import type { Point, Rect, Size } from "@/lib/spatial";
 import { spatial } from "@/lib/spatial";
 import { connectedUsersAtom } from "@/stores/stores";
+import {
+  isKeyboardOpenAtom,
+  visibleViewportRectAtom,
+} from "@/stores/viewport";
 
 const CANVAS_PADDING = 24;
 const EPHEMERAL_GAP = 36;
@@ -20,11 +24,9 @@ const EPHEMERAL_CARET_INSET_RIGHT = 40;
 const KEYBOARD_INPUT_GAP = 20;
 
 export default function EphemeralApp() {
-  const {
-    rect: viewportRect,
-    isKeyboardOpen,
-    hasOnScreenKeyboard,
-  } = useVisibleViewport();
+  useVisibleViewport();
+
+  const viewportRect = useAtomValue(visibleViewportRectAtom);
 
   return (
     <div className="font-sans">
@@ -39,11 +41,7 @@ export default function EphemeralApp() {
       >
         <div className="absolute inset-0">
           <WorldCanvas>
-            <EphemeralLayer
-              hasOnScreenKeyboard={hasOnScreenKeyboard}
-              isKeyboardOpen={isKeyboardOpen}
-              viewportSize={viewportRect}
-            />
+            <EphemeralLayer />
           </WorldCanvas>
         </div>
       </main>
@@ -51,16 +49,14 @@ export default function EphemeralApp() {
   );
 }
 
-function EphemeralLayer({
-  hasOnScreenKeyboard,
-  isKeyboardOpen,
-  viewportSize,
-}: {
-  hasOnScreenKeyboard: boolean;
-  isKeyboardOpen: boolean;
-  viewportSize: Size;
-}) {
+function EphemeralLayer() {
   const connectedUsers = useAtomValue(connectedUsersAtom);
+  const isKeyboardOpen = useAtomValue(isKeyboardOpenAtom);
+  const viewportRect = useAtomValue(visibleViewportRectAtom);
+  const viewportSize = useMemo(
+    () => getRectSize(viewportRect),
+    [viewportRect],
+  );
   const canvasBounds = useMemo(
     () => createCanvasBounds(viewportSize),
     [viewportSize]
@@ -84,12 +80,8 @@ function EphemeralLayer({
   return (
     <>
       <EphemeralSlot point={localRect} testId="local-composition-slot">
-        <LocalCompositionAnchor isKeyboardOpen={isKeyboardOpen}>
-          <LocalEphemeral
-            manualKeyboardActivation={hasOnScreenKeyboard}
-            preventConsecutiveSpaces={hasOnScreenKeyboard}
-            showStartTypingButton={hasOnScreenKeyboard && !isKeyboardOpen}
-          />
+        <LocalCompositionAnchor>
+          <LocalEphemeral />
         </LocalCompositionAnchor>
       </EphemeralSlot>
 
@@ -156,11 +148,11 @@ function CompositionAnchor({ children }: { children: ReactNode }) {
 
 function LocalCompositionAnchor({
   children,
-  isKeyboardOpen,
 }: {
   children: ReactNode;
-  isKeyboardOpen: boolean;
 }) {
+  const isKeyboardOpen = useAtomValue(isKeyboardOpenAtom);
+
   return (
     <div
       className={
@@ -209,6 +201,13 @@ function createLocalRect(size: Size, isKeyboardOpen: boolean): Rect {
       )
     ),
     ...EPHEMERAL_SLOT_SIZE,
+  };
+}
+
+function getRectSize(rect: Rect): Size {
+  return {
+    width: rect.width,
+    height: rect.height,
   };
 }
 
