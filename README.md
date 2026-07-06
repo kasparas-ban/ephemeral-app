@@ -147,3 +147,4 @@ E2E_HOST=127.0.0.1
 [ ] - Fix scrolling on desktop with arrow keys
 [ ] - Test on Safari & Firefox
 [ ] - Adapt to mobile
+[ ] - Allow letter symbols only (no emojis)
