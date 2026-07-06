@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Space_Mono } from "next/font/google";
+
 import { ConnectionProvider } from "@/providers/ConnectionProvider";
+
 import "./globals.css";
 
 const spaceMono = Space_Mono({

@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+
 import { useAtomValue } from "jotai";
 import { Gauge, MessageSquare, Pause, Play, Users } from "lucide-react";
+
 import {
   DEFAULT_DEV_BOT_PHRASES,
   DEV_BOT_MAX_COUNT,

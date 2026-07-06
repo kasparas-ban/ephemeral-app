@@ -1,4 +1,5 @@
 import { atom } from "jotai";
+
 import { Presence } from "@/lib/types";
 import { ConnectionStatus, WSClient } from "@/lib/ws";
 

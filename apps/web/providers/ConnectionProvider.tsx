@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect } from "react";
+
 import { useSetAtom } from "jotai";
+
 import { WSClient } from "@/lib/ws";
 import {
   connectedUsersAtom,

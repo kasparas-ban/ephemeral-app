@@ -1,15 +1,19 @@
 "use client";
 
+import type { Ref, SyntheticEvent } from "react";
 import {
   useEffect,
   useImperativeHandle,
   useRef,
 } from "react";
-import type { Ref, SyntheticEvent } from "react";
+
 import { PrimitiveAtom, useSetAtom } from "jotai";
-import AnimatedText from "./animated-text";
-import { cn } from "@/lib/utils";
+
 import { TypingAction } from "@/lib/types";
+import { cn } from "@/lib/utils";
+
+import AnimatedText from "./animated-text";
+
 import styles from "./styles.module.css";
 
 const CHAR_WIDTH = 12.24; // px

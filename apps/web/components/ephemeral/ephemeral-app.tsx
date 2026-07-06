@@ -1,13 +1,15 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
+
 import { useAtomValue } from "jotai";
+
 import WorldCanvas from "@/components/canvas/WorldCanvas";
 import LocalEphemeral from "@/components/ephemeral/local-ephemeral";
 import RemoteEphemeral from "@/components/ephemeral/remote-ephemeral";
-import { spatial } from "@/lib/spatial";
-import type { ReactNode } from "react";
 import type { Point, Rect, Size } from "@/lib/spatial";
+import { spatial } from "@/lib/spatial";
 import { connectedUsersAtom } from "@/stores/stores";
 
 const CANVAS_PADDING = 24;

@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
+
 import { atom, useAtomValue } from "jotai";
-import { wsClientAtom } from "@/stores/stores";
+
 import { serverMessageToAction } from "@/lib/typing";
+import { wsClientAtom } from "@/stores/stores";
+
 import Composition, { CompositionHandle } from "./composition";
 
 /**

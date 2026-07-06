@@ -1,9 +1,12 @@
 "use client";
 
 import { SyntheticEvent, useRef } from "react";
+
 import { atom, useAtomValue } from "jotai";
-import { wsClientAtom } from "@/stores/stores";
+
 import { actionToClientMessage, inputEventToAction } from "@/lib/typing";
+import { wsClientAtom } from "@/stores/stores";
+
 import Composition, { CompositionHandle } from "./composition";
 
 // Mirrors the local user's text; write-only today, scoped to this module.
