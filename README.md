@@ -142,9 +142,9 @@ E2E_HOST=127.0.0.1
 [x] - React Compiler
 [ ] - Setup observability
 [x] - Deploy on Vercel
-[ ] - Custom 404 page
+[x] - Custom 404 page
 [ ] - Info panel
-[ ] - Fix scrolling on desktop with arrow keys
+[x] - Fix scrolling on desktop with arrow keys
 [ ] - Test on Safari & Firefox
 [ ] - Adapt to mobile
 [ ] - Allow letter symbols only (no emojis)

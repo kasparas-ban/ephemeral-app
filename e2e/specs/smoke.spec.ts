@@ -20,6 +20,13 @@ test("home page boots without browser errors", async ({ page }) => {
   expect(failedRequests).toEqual([]);
 });
 
+test("unknown pages route to the home page", async ({ page }) => {
+  await page.goto("/this/page/does-not-exist");
+
+  expect(new URL(page.url()).pathname).toBe("/");
+  await expect(page.getByTestId("local-composition")).toBeVisible();
+});
+
 test("api health endpoint is reachable from the E2E environment", async ({ request }) => {
   const apiPort = process.env.E2E_API_PORT ?? "18080";
   const response = await request.get(`http://127.0.0.1:${apiPort}/health`);
