@@ -1,13 +1,14 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { useAtomValue } from "jotai";
 
 import WorldCanvas from "@/components/canvas/WorldCanvas";
 import LocalEphemeral from "@/components/ephemeral/local-ephemeral";
 import RemoteEphemeral from "@/components/ephemeral/remote-ephemeral";
+import useVisibleViewport from "@/hooks/useVisibleViewport";
 import type { Point, Rect, Size } from "@/lib/spatial";
 import { spatial } from "@/lib/spatial";
 import { connectedUsersAtom } from "@/stores/stores";
@@ -16,15 +17,28 @@ const CANVAS_PADDING = 24;
 const EPHEMERAL_GAP = 36;
 const EPHEMERAL_SLOT_SIZE: Size = { width: 240, height: 136 };
 const EPHEMERAL_CARET_INSET_RIGHT = 40;
-const DEFAULT_VIEWPORT_SIZE: Size = { width: 1200, height: 720 };
+const KEYBOARD_INPUT_GAP = 20;
 
 export default function EphemeralApp() {
+  const { rect: viewportRect, isKeyboardOpen } = useVisibleViewport();
+
   return (
     <div className="font-sans">
-      <main className="relative h-screen overflow-hidden">
+      <main
+        className="fixed overflow-hidden"
+        style={{
+          left: viewportRect.x,
+          top: viewportRect.y,
+          width: viewportRect.width,
+          height: viewportRect.height,
+        }}
+      >
         <div className="absolute inset-0">
           <WorldCanvas>
-            <EphemeralLayer />
+            <EphemeralLayer
+              isKeyboardOpen={isKeyboardOpen}
+              viewportSize={viewportRect}
+            />
           </WorldCanvas>
         </div>
       </main>
@@ -32,16 +46,21 @@ export default function EphemeralApp() {
   );
 }
 
-function EphemeralLayer() {
+function EphemeralLayer({
+  isKeyboardOpen,
+  viewportSize,
+}: {
+  isKeyboardOpen: boolean;
+  viewportSize: Size;
+}) {
   const connectedUsers = useAtomValue(connectedUsersAtom);
-  const viewportSize = useViewportSize();
   const canvasBounds = useMemo(
     () => createCanvasBounds(viewportSize),
     [viewportSize]
   );
   const localRect = useMemo(
-    () => createLocalRect(viewportSize),
-    [viewportSize]
+    () => createLocalRect(viewportSize, isKeyboardOpen),
+    [isKeyboardOpen, viewportSize]
   );
   const placements = useMemo(
     () =>
@@ -58,7 +77,9 @@ function EphemeralLayer() {
   return (
     <>
       <EphemeralSlot point={localRect} testId="local-composition-slot">
-        <UserEphemeral />
+        <LocalCompositionAnchor isKeyboardOpen={isKeyboardOpen}>
+          <UserEphemeral />
+        </LocalCompositionAnchor>
       </EphemeralSlot>
 
       {connectedUsers.map((user) => {
@@ -71,7 +92,9 @@ function EphemeralLayer() {
             point={point}
             testId="remote-composition-slot"
           >
-            <IncomingEphemeralItem userId={user.id} />
+            <CompositionAnchor>
+              <IncomingEphemeralItem userId={user.id} />
+            </CompositionAnchor>
           </EphemeralSlot>
         );
       })}
@@ -106,35 +129,45 @@ function EphemeralSlot({
         transform: `translate3d(${point.x}px, ${point.y}px, 0)`,
       }}
     >
-      <div
-        className="absolute pointer-events-auto top-1/2 -translate-y-1/2"
-        style={{
-          left: EPHEMERAL_SLOT_SIZE.width - EPHEMERAL_CARET_INSET_RIGHT,
-        }}
-      >
-        {children}
-      </div>
+      {children}
     </div>
   );
 }
 
-function useViewportSize(): Size {
-  const [size, setSize] = useState<Size>(DEFAULT_VIEWPORT_SIZE);
+function CompositionAnchor({ children }: { children: ReactNode }) {
+  return (
+    <div
+      className="absolute pointer-events-auto top-1/2 -translate-y-1/2"
+      style={{
+        left: EPHEMERAL_SLOT_SIZE.width - EPHEMERAL_CARET_INSET_RIGHT,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
 
-  useEffect(() => {
-    const update = () => {
-      setSize({
-        width: window.innerWidth,
-        height: window.innerHeight,
-      });
-    };
-
-    update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, []);
-
-  return size;
+function LocalCompositionAnchor({
+  children,
+  isKeyboardOpen,
+}: {
+  children: ReactNode;
+  isKeyboardOpen: boolean;
+}) {
+  return (
+    <div
+      className={
+        isKeyboardOpen
+          ? "absolute pointer-events-auto bottom-0"
+          : "absolute pointer-events-auto top-1/2 -translate-y-1/2"
+      }
+      style={{
+        left: EPHEMERAL_SLOT_SIZE.width - EPHEMERAL_CARET_INSET_RIGHT,
+      }}
+    >
+      {children}
+    </div>
+  );
 }
 
 function createCanvasBounds(size: Size): Rect {
@@ -146,7 +179,9 @@ function createCanvasBounds(size: Size): Rect {
   };
 }
 
-function createLocalRect(size: Size): Rect {
+function createLocalRect(size: Size, isKeyboardOpen: boolean): Rect {
+  const bottomInset = isKeyboardOpen ? KEYBOARD_INPUT_GAP : CANVAS_PADDING;
+
   return {
     x: clamp(
       size.width / 2 - EPHEMERAL_SLOT_SIZE.width + EPHEMERAL_CARET_INSET_RIGHT,
@@ -157,11 +192,13 @@ function createLocalRect(size: Size): Rect {
       )
     ),
     y: clamp(
-      size.height / 2 - EPHEMERAL_SLOT_SIZE.height / 2,
+      isKeyboardOpen
+        ? size.height - EPHEMERAL_SLOT_SIZE.height - KEYBOARD_INPUT_GAP
+        : size.height / 2 - EPHEMERAL_SLOT_SIZE.height / 2,
       CANVAS_PADDING,
       Math.max(
         CANVAS_PADDING,
-        size.height - EPHEMERAL_SLOT_SIZE.height - CANVAS_PADDING
+        size.height - EPHEMERAL_SLOT_SIZE.height - bottomInset
       )
     ),
     ...EPHEMERAL_SLOT_SIZE,
