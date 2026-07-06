@@ -19,7 +19,7 @@ import {
 
 const CANVAS_PADDING = 24;
 const EPHEMERAL_GAP = 36;
-const EPHEMERAL_SLOT_SIZE: Size = { width: 240, height: 136 };
+const EPHEMERAL_SLOT_MAX_SIZE: Size = { width: 240, height: 136 };
 const EPHEMERAL_CARET_INSET_RIGHT = 40;
 const KEYBOARD_INPUT_GAP = 20;
 
@@ -61,26 +61,34 @@ function EphemeralLayer() {
     () => createCanvasBounds(viewportSize),
     [viewportSize]
   );
+  const slotSize = useMemo(
+    () => createEphemeralSlotSize(viewportSize),
+    [viewportSize]
+  );
   const localRect = useMemo(
-    () => createLocalRect(viewportSize, isKeyboardOpen),
-    [isKeyboardOpen, viewportSize]
+    () => createLocalRect(viewportSize, slotSize, isKeyboardOpen),
+    [isKeyboardOpen, slotSize, viewportSize]
   );
   const placements = useMemo(
     () =>
       spatial.layoutUsers({
         userIds: connectedUsers.map((user) => user.id),
         bounds: canvasBounds,
-        itemSize: EPHEMERAL_SLOT_SIZE,
+        itemSize: slotSize,
         reservedRects: [localRect],
         gap: EPHEMERAL_GAP,
       }),
-    [canvasBounds, connectedUsers, localRect]
+    [canvasBounds, connectedUsers, localRect, slotSize]
   );
 
   return (
     <>
-      <EphemeralSlot point={localRect} testId="local-composition-slot">
-        <LocalCompositionAnchor>
+      <EphemeralSlot
+        point={localRect}
+        size={slotSize}
+        testId="local-composition-slot"
+      >
+        <LocalCompositionAnchor slotWidth={slotSize.width}>
           <LocalEphemeral />
         </LocalCompositionAnchor>
       </EphemeralSlot>
@@ -93,9 +101,10 @@ function EphemeralLayer() {
           <EphemeralSlot
             key={user.id}
             point={point}
+            size={slotSize}
             testId="remote-composition-slot"
           >
-            <CompositionAnchor>
+            <CompositionAnchor slotWidth={slotSize.width}>
               <IncomingEphemeralItem userId={user.id} />
             </CompositionAnchor>
           </EphemeralSlot>
@@ -112,10 +121,12 @@ function IncomingEphemeralItem({ userId }: { userId: string }) {
 function EphemeralSlot({
   children,
   point,
+  size,
   testId,
 }: {
   children: ReactNode;
   point: Point;
+  size: Size;
   testId: string;
 }) {
   return (
@@ -123,8 +134,8 @@ function EphemeralSlot({
       data-testid={testId}
       className="absolute pointer-events-none"
       style={{
-        width: EPHEMERAL_SLOT_SIZE.width,
-        height: EPHEMERAL_SLOT_SIZE.height,
+        width: size.width,
+        height: size.height,
         transform: `translate3d(${point.x}px, ${point.y}px, 0)`,
       }}
     >
@@ -133,12 +144,18 @@ function EphemeralSlot({
   );
 }
 
-function CompositionAnchor({ children }: { children: ReactNode }) {
+function CompositionAnchor({
+  children,
+  slotWidth,
+}: {
+  children: ReactNode;
+  slotWidth: number;
+}) {
   return (
     <div
       className="absolute pointer-events-auto top-1/2 -translate-y-1/2"
       style={{
-        left: EPHEMERAL_SLOT_SIZE.width - EPHEMERAL_CARET_INSET_RIGHT,
+        left: slotWidth - EPHEMERAL_CARET_INSET_RIGHT,
       }}
     >
       {children}
@@ -148,8 +165,10 @@ function CompositionAnchor({ children }: { children: ReactNode }) {
 
 function LocalCompositionAnchor({
   children,
+  slotWidth,
 }: {
   children: ReactNode;
+  slotWidth: number;
 }) {
   const isKeyboardOpen = useAtomValue(isKeyboardOpenAtom);
 
@@ -161,7 +180,7 @@ function LocalCompositionAnchor({
           : "absolute pointer-events-auto top-1/2 -translate-y-1/2"
       }
       style={{
-        left: EPHEMERAL_SLOT_SIZE.width - EPHEMERAL_CARET_INSET_RIGHT,
+        left: slotWidth - EPHEMERAL_CARET_INSET_RIGHT,
       }}
     >
       {children}
@@ -178,29 +197,43 @@ function createCanvasBounds(size: Size): Rect {
   };
 }
 
-function createLocalRect(size: Size, isKeyboardOpen: boolean): Rect {
+function createEphemeralSlotSize(size: Size): Size {
+  return {
+    width: Math.max(
+      EPHEMERAL_CARET_INSET_RIGHT,
+      Math.min(EPHEMERAL_SLOT_MAX_SIZE.width, size.width / 2)
+    ),
+    height: EPHEMERAL_SLOT_MAX_SIZE.height,
+  };
+}
+
+function createLocalRect(
+  size: Size,
+  slotSize: Size,
+  isKeyboardOpen: boolean
+): Rect {
   const bottomInset = isKeyboardOpen ? KEYBOARD_INPUT_GAP : CANVAS_PADDING;
 
   return {
     x: clamp(
-      size.width / 2 - EPHEMERAL_SLOT_SIZE.width + EPHEMERAL_CARET_INSET_RIGHT,
+      size.width / 2 - slotSize.width + EPHEMERAL_CARET_INSET_RIGHT,
       CANVAS_PADDING,
       Math.max(
         CANVAS_PADDING,
-        size.width - EPHEMERAL_SLOT_SIZE.width - CANVAS_PADDING
+        size.width - slotSize.width - CANVAS_PADDING
       )
     ),
     y: clamp(
       isKeyboardOpen
-        ? size.height - EPHEMERAL_SLOT_SIZE.height - KEYBOARD_INPUT_GAP
-        : size.height / 2 - EPHEMERAL_SLOT_SIZE.height / 2,
+        ? size.height - slotSize.height - KEYBOARD_INPUT_GAP
+        : size.height / 2 - slotSize.height / 2,
       CANVAS_PADDING,
       Math.max(
         CANVAS_PADDING,
-        size.height - EPHEMERAL_SLOT_SIZE.height - bottomInset
+        size.height - slotSize.height - bottomInset
       )
     ),
-    ...EPHEMERAL_SLOT_SIZE,
+    ...slotSize,
   };
 }
 

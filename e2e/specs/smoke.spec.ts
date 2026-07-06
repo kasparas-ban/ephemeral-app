@@ -53,6 +53,41 @@ test("mobile shows Start typing while the virtual keyboard is closed", async ({
   await expect(localInput(page)).toBeFocused();
 });
 
+test("mobile centers the local input with a half-width slot", async ({
+  isMobile,
+  page,
+}) => {
+  test.skip(!isMobile, "mobile-only slot geometry");
+
+  await page.goto("/");
+
+  const metrics = await page.evaluate(() => {
+    const slot = document.querySelector<HTMLElement>(
+      '[data-testid="local-composition-slot"]'
+    );
+    const composition = document.querySelector<HTMLElement>(
+      '[data-testid="local-composition"]'
+    );
+
+    if (!slot || !composition) {
+      throw new Error("Local composition elements were not found");
+    }
+
+    const slotRect = slot.getBoundingClientRect();
+    const compositionRect = composition.getBoundingClientRect();
+
+    return {
+      compositionLeft: compositionRect.left,
+      slotWidth: slotRect.width,
+      viewportCenter: window.innerWidth / 2,
+      viewportWidth: window.innerWidth,
+    };
+  });
+
+  expect(metrics.slotWidth).toBeCloseTo(metrics.viewportWidth / 2, 0);
+  expect(metrics.compositionLeft).toBeCloseTo(metrics.viewportCenter, 0);
+});
+
 test("mobile prevents consecutive spaces and double-space punctuation", async ({
   isMobile,
   page,
