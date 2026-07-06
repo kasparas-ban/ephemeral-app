@@ -33,6 +33,32 @@ test("unknown pages route to the home page", async ({ page }) => {
   await expect(page.getByTestId("local-composition")).toBeVisible();
 });
 
+test("info button opens a blurred full-screen explanation", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Show app information" }).click();
+
+  const dialog = page.getByRole("dialog", {
+    name: "Ephemeral is a shared typing canvas.",
+  });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText(
+    "Type and your words appear live in the space for everyone connected.",
+  );
+
+  const backdropFilter = await dialog.evaluate(
+    (element) => getComputedStyle(element).backdropFilter,
+  );
+  expect(backdropFilter).not.toBe("none");
+
+  await dialog.click({ position: { x: 8, y: 8 } });
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeVisible();
+
+  await page.getByRole("button", { name: "Close app information" }).click();
+  await expect(dialog).toHaveCount(0);
+});
+
 test("mobile shows Start typing while the virtual keyboard is closed", async ({
   isMobile,
   page,

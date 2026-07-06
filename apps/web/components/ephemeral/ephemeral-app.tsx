@@ -1,9 +1,10 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { useAtomValue } from "jotai";
+import { Info, X } from "lucide-react";
 
 import WorldCanvas from "@/components/canvas/WorldCanvas";
 import LocalEphemeral from "@/components/ephemeral/local-ephemeral";
@@ -27,6 +28,7 @@ const KEYBOARD_INPUT_LEFT_OFFSET_INCREASE = 24;
 export default function EphemeralApp() {
   useVisibleViewport();
 
+  const [isInfoOpen, setIsInfoOpen] = useState(false);
   const viewportRect = useAtomValue(visibleViewportRectAtom);
 
   return (
@@ -45,7 +47,50 @@ export default function EphemeralApp() {
             <EphemeralLayer />
           </WorldCanvas>
         </div>
+
+        {isInfoOpen && <InfoOverlay />}
+
+        <button
+          type="button"
+          aria-label={
+            isInfoOpen ? "Close app information" : "Show app information"
+          }
+          aria-expanded={isInfoOpen}
+          onClick={() => setIsInfoOpen((open) => !open)}
+          className="absolute right-4 top-4 z-40 inline-flex h-10 w-10 items-center justify-center rounded-full border border-neutral-300 bg-white/85 text-neutral-900 shadow-sm backdrop-blur transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2 active:scale-95"
+        >
+          {isInfoOpen ? (
+            <X aria-hidden="true" className="h-5 w-5" strokeWidth={2.25} />
+          ) : (
+            <Info aria-hidden="true" className="h-5 w-5" strokeWidth={2.25} />
+          )}
+        </button>
       </main>
+    </div>
+  );
+}
+
+function InfoOverlay() {
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="app-info-title"
+      className="absolute inset-0 z-30 grid place-items-center bg-white/45 px-6 text-neutral-950 backdrop-blur-md"
+    >
+      <section className="max-w-[min(34rem,calc(100vw-3rem))] text-center">
+        <h1
+          id="app-info-title"
+          className="text-2xl font-semibold leading-tight sm:text-3xl"
+        >
+          Ephemeral is a shared typing canvas.
+        </h1>
+        <p className="mt-4 text-sm leading-6 text-neutral-700 sm:text-base sm:leading-7">
+          Type and your words appear live in the space for everyone connected.
+          Other people&apos;s thoughts drift in as anonymous, temporary text, then
+          fade away so the room stays light, present, and unrecorded.
+        </p>
+      </section>
     </div>
   );
 }
