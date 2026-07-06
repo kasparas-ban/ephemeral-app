@@ -20,7 +20,11 @@ const EPHEMERAL_CARET_INSET_RIGHT = 40;
 const KEYBOARD_INPUT_GAP = 20;
 
 export default function EphemeralApp() {
-  const { rect: viewportRect, isKeyboardOpen } = useVisibleViewport();
+  const {
+    rect: viewportRect,
+    isKeyboardOpen,
+    hasOnScreenKeyboard,
+  } = useVisibleViewport();
 
   return (
     <div className="font-sans">
@@ -36,6 +40,7 @@ export default function EphemeralApp() {
         <div className="absolute inset-0">
           <WorldCanvas>
             <EphemeralLayer
+              hasOnScreenKeyboard={hasOnScreenKeyboard}
               isKeyboardOpen={isKeyboardOpen}
               viewportSize={viewportRect}
             />
@@ -47,9 +52,11 @@ export default function EphemeralApp() {
 }
 
 function EphemeralLayer({
+  hasOnScreenKeyboard,
   isKeyboardOpen,
   viewportSize,
 }: {
+  hasOnScreenKeyboard: boolean;
   isKeyboardOpen: boolean;
   viewportSize: Size;
 }) {
@@ -78,7 +85,10 @@ function EphemeralLayer({
     <>
       <EphemeralSlot point={localRect} testId="local-composition-slot">
         <LocalCompositionAnchor isKeyboardOpen={isKeyboardOpen}>
-          <UserEphemeral />
+          <LocalEphemeral
+            manualKeyboardActivation={hasOnScreenKeyboard}
+            showStartTypingButton={hasOnScreenKeyboard && !isKeyboardOpen}
+          />
         </LocalCompositionAnchor>
       </EphemeralSlot>
 
@@ -104,10 +114,6 @@ function EphemeralLayer({
 
 function IncomingEphemeralItem({ userId }: { userId: string }) {
   return <RemoteEphemeral userId={userId} />;
-}
-
-function UserEphemeral() {
-  return <LocalEphemeral />;
 }
 
 function EphemeralSlot({

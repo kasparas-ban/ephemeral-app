@@ -18,12 +18,14 @@ type NavigatorWithVirtualKeyboard = Navigator & {
 export type VisibleViewport = {
   rect: Rect;
   isKeyboardOpen: boolean;
+  hasOnScreenKeyboard: boolean;
 };
 
 export default function useVisibleViewport(): VisibleViewport {
   const [viewport, setViewport] = useState<VisibleViewport>({
     rect: DEFAULT_VIEWPORT_RECT,
     isKeyboardOpen: false,
+    hasOnScreenKeyboard: false,
   });
 
   useEffect(() => {
@@ -39,10 +41,15 @@ export default function useVisibleViewport(): VisibleViewport {
         visualViewportRect,
         keyboardRect,
       );
+      const hasOnScreenKeyboard = canShowOnScreenKeyboard();
 
       setViewport({
         rect: usableRect,
-        isKeyboardOpen: isOnScreenKeyboardOpen(keyboardRect),
+        isKeyboardOpen: isOnScreenKeyboardOpen(
+          keyboardRect,
+          hasOnScreenKeyboard,
+        ),
+        hasOnScreenKeyboard,
       });
     };
 
@@ -110,8 +117,11 @@ const getKeyboardRect = (keyboard?: VirtualKeyboard): Rect => {
   };
 };
 
-const isOnScreenKeyboardOpen = (keyboardRect: Rect) => {
-  if (!canShowOnScreenKeyboard()) return false;
+const isOnScreenKeyboardOpen = (
+  keyboardRect: Rect,
+  hasOnScreenKeyboard: boolean,
+) => {
+  if (!hasOnScreenKeyboard) return false;
   if (keyboardRect.height > 0) return true;
 
   const viewport = window.visualViewport;

@@ -1,7 +1,8 @@
 "use client";
 
-import type { Ref, SyntheticEvent } from "react";
+import type { KeyboardEvent, Ref, SyntheticEvent } from "react";
 import {
+  useCallback,
   useEffect,
   useImperativeHandle,
   useRef,
@@ -22,14 +23,19 @@ const CARET_IDLE_DELAY = 100; // ms to wait after last input before blinking res
 
 export type CompositionHandle = {
   apply: (action: TypingAction) => void;
+  blur: () => void;
+  focus: () => void;
 };
 
 export type CompositionProps = {
   ref?: Ref<CompositionHandle>;
   textAtom: PrimitiveAtom<string>;
   editable?: boolean;
+  autoFocus?: boolean;
+  keepFocus?: boolean;
   onBeforeInput?: (e: InputEvent) => void;
   onInput?: (e: SyntheticEvent<HTMLDivElement>) => void;
+  onKeyDown?: (e: KeyboardEvent<HTMLDivElement>) => void;
   testId?: string;
   textClassName?: string;
   caretClassName?: string;
@@ -39,8 +45,11 @@ export default function Composition({
   ref,
   textAtom,
   editable = false,
+  autoFocus = editable,
+  keepFocus = editable,
   onBeforeInput,
   onInput,
+  onKeyDown,
   testId,
   textClassName,
   caretClassName,
@@ -54,7 +63,7 @@ export default function Composition({
 
   const setText = useSetAtom(textAtom);
 
-  const showCaretWhileTyping = () => {
+  const showCaretWhileTyping = useCallback(() => {
     if (!caretRef.current) return;
 
     caretRef.current.classList.add(styles.caretTyping);
@@ -67,7 +76,15 @@ export default function Composition({
       if (!caretRef.current) return;
       caretRef.current.classList.remove(styles.caretTyping);
     }, CARET_IDLE_DELAY);
-  };
+  }, []);
+
+  const focusEditable = useCallback(() => {
+    const editableEl = editableRef.current;
+    if (!editable || !editableEl) return;
+    if (document.activeElement === editableEl) return;
+
+    editableEl.focus({ preventScroll: true });
+  }, [editable]);
 
   // The single place an action becomes a visible effect.
   useImperativeHandle(
@@ -93,13 +110,19 @@ export default function Composition({
 
         showCaretWhileTyping();
       },
+      blur() {
+        editableRef.current?.blur();
+      },
+      focus: focusEditable,
     }),
-    [setText]
+    [focusEditable, setText, showCaretWhileTyping]
   );
 
   useEffect(() => {
-    if (editable) editableRef.current?.focus();
+    if (autoFocus) focusEditable();
+  }, [autoFocus, focusEditable]);
 
+  useEffect(() => {
     if (!textContainerRef.current) return;
 
     animatorRef.current = new AnimatedText(textContainerRef.current, {
@@ -110,7 +133,7 @@ export default function Composition({
     return () => {
       animatorRef.current = null;
     };
-  }, [editable]);
+  }, []);
 
   // Required to make char deletion work on mobile
   useEffect(() => {
@@ -158,9 +181,10 @@ export default function Composition({
         role={editable ? "textbox" : undefined}
         aria-label={editable ? "Invisible input" : undefined}
         spellCheck={false}
-        onBlur={editable ? () => editableRef.current?.focus() : undefined}
+        onBlur={editable && keepFocus ? focusEditable : undefined}
         onInput={editable ? onInput : undefined}
         onCompositionEnd={editable ? onInput : undefined}
+        onKeyDown={editable ? onKeyDown : undefined}
         className="relative w-0 h-full outline-none overflow-hidden text-transparent caret-transparent selection:bg-transparent"
       />
     </div>

@@ -9,7 +9,9 @@ test("home page boots without browser errors", async ({ page }) => {
     if (message.type() === "error") consoleErrors.push(message.text());
   });
   page.on("requestfailed", (request) => {
-    failedRequests.push(`${request.method()} ${request.url()} ${request.failure()?.errorText}`);
+    failedRequests.push(
+      `${request.method()} ${request.url()} ${request.failure()?.errorText}`,
+    );
   });
 
   await page.goto("/");
@@ -27,7 +29,29 @@ test("unknown pages route to the home page", async ({ page }) => {
   await expect(page.getByTestId("local-composition")).toBeVisible();
 });
 
-test("api health endpoint is reachable from the E2E environment", async ({ request }) => {
+test("mobile shows Start typing while the virtual keyboard is closed", async ({
+  isMobile,
+  page,
+}) => {
+  await page.goto("/");
+
+  const startTyping = page.getByRole("button", { name: "Start typing" });
+
+  if (!isMobile) {
+    await expect(startTyping).toHaveCount(0);
+    return;
+  }
+
+  await expect(startTyping).toBeVisible();
+  await expect(localInput(page)).not.toBeFocused();
+
+  await startTyping.click();
+  await expect(localInput(page)).toBeFocused();
+});
+
+test("api health endpoint is reachable from the E2E environment", async ({
+  request,
+}) => {
   const apiPort = process.env.E2E_API_PORT ?? "18080";
   const response = await request.get(`http://127.0.0.1:${apiPort}/health`);
 
