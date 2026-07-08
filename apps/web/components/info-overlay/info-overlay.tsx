@@ -1,12 +1,14 @@
+import "./info-overlay.css";
+
 export default function InfoOverlay() {
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-labelledby="app-info-title"
-      className="info-overlay absolute inset-0 z-30 grid place-items-center bg-white/45 px-6 text-neutral-950 backdrop-blur-md"
+      className="infoOverlay absolute inset-0 z-30 grid place-items-center bg-white/45 px-6 text-neutral-950"
     >
-      <section className="max-w-[min(34rem,calc(100vw-3rem))] text-center">
+      <section className="infoOverlayContent max-w-[min(34rem,calc(100vw-3rem))] text-center">
         <h1
           id="app-info-title"
           className="text-2xl leading-tight font-semibold sm:text-3xl"

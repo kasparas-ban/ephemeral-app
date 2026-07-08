@@ -15,7 +15,7 @@ import { spatial } from "@/lib/spatial";
 import { connectedUsersAtom } from "@/stores/stores";
 import { isKeyboardOpenAtom, visibleViewportRectAtom } from "@/stores/viewport";
 
-import InfoOverlay from "./info-overlay";
+import InfoOverlay from "../info-overlay/info-overlay";
 
 const CANVAS_PADDING = 24;
 const EPHEMERAL_GAP = 36;

@@ -1,0 +1,21 @@
+.infoOverlay {
+  backdrop-filter: blur(8px);
+  transition: backdrop-filter 0.2s ease-out;
+
+  @starting-style {
+    backdrop-filter: blur(0px);
+  }
+}
+
+.infoOverlayContent {
+  filter: blur(0px);
+  opacity: 1;
+  transition:
+    filter 0.34s ease-out 0.1s,
+    opacity 0.34s ease-out 0.1s;
+
+  @starting-style {
+    filter: blur(5px);
+    opacity: 0;
+  }
+}
