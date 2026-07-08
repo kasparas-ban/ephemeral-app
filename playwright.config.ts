@@ -6,7 +6,8 @@ const host = process.env.E2E_HOST ?? "127.0.0.1";
 
 const webUrl = `http://${host}:${webPort}`;
 const apiUrl = `http://${host}:${apiPort}`;
-const webServerOutput = process.env.E2E_WEB_SERVER_LOGS === "1" ? "pipe" : "ignore";
+const webServerOutput =
+  process.env.E2E_WEB_SERVER_LOGS === "1" ? "pipe" : "ignore";
 
 export default defineConfig({
   testDir: "./e2e/specs",

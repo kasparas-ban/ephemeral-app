@@ -1,4 +1,9 @@
-import { expect, type Browser, type BrowserContext, type Page } from "@playwright/test";
+import {
+  expect,
+  type Browser,
+  type BrowserContext,
+  type Page,
+} from "@playwright/test";
 
 export type TestUser = {
   context: BrowserContext;

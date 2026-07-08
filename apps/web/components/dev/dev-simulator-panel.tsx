@@ -81,7 +81,7 @@ export default function DevSimulatorPanel() {
   return (
     <section
       data-testid="dev-simulator-panel"
-      className="fixed bottom-4 right-4 z-50 w-[min(22rem,calc(100vw-2rem))] border border-neutral-300 bg-white/95 p-3 text-sm text-neutral-900 shadow-lg backdrop-blur"
+      className="fixed right-4 bottom-4 z-50 w-[min(22rem,calc(100vw-2rem))] border border-neutral-300 bg-white/95 p-3 text-sm text-neutral-900 shadow-lg backdrop-blur"
     >
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>

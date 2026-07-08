@@ -72,7 +72,7 @@ export default class AnimatedText {
 
     // Identify if this line already has a wrapper (i.e. we moved back to edit a previous line)
     const existingLineWrapper = this.container.querySelector(
-      `span[data-type="line"][data-line="${this.currentLine}"]`
+      `span[data-type="line"][data-line="${this.currentLine}"]`,
     ) as HTMLElement | null;
 
     if (isNewWord) {
@@ -147,8 +147,8 @@ export default class AnimatedText {
   private getLineChars(line: number) {
     return Array.from(
       this.container.querySelectorAll<HTMLElement>(
-        `${LIVE_CHAR_SELECTOR}[data-char-line="${line}"]`
-      )
+        `${LIVE_CHAR_SELECTOR}[data-char-line="${line}"]`,
+      ),
     );
   }
 
@@ -183,7 +183,7 @@ export default class AnimatedText {
     this.container.append(lineEl);
 
     const lineWords = this.container.querySelectorAll(
-      `span[data-type="word"][data-line="${this.currentLine}"]`
+      `span[data-type="word"][data-line="${this.currentLine}"]`,
     );
     lineWords.forEach((word) => {
       (lineEl as HTMLElement).append(word);
@@ -203,7 +203,7 @@ export default class AnimatedText {
 
   shiftCurrentLine(direction: "left" | "right") {
     const lineChars = this.container.querySelectorAll(
-      `span[data-char-line="${this.currentLine}"]`
+      `span[data-char-line="${this.currentLine}"]`,
     );
 
     lineChars.forEach((char) => {
@@ -228,7 +228,7 @@ export default class AnimatedText {
         duration: this.options.charShiftDuration,
         easing: CHAR_SHIFT_EASING,
         fill: "forwards",
-      }
+      },
     );
 
     el.dataset.tx = String(toX);
@@ -246,7 +246,7 @@ export default class AnimatedText {
         duration: this.options.lineMoveDuration,
         easing: LINE_MOVE_EASING,
         fill: "forwards",
-      }
+      },
     );
 
     el.dataset.ty = String(toY);
@@ -262,7 +262,7 @@ export default class AnimatedText {
         duration: this.options.charIntroDuration,
         easing: CHAR_INTRO_EASING,
         fill: "forwards",
-      }
+      },
     );
 
     el.dataset.tx = String(-this.options.charWidth);
@@ -303,7 +303,7 @@ export default class AnimatedText {
         duration: this.options.floatInitDuration,
         easing: "ease-in-out",
         fill: "forwards",
-      }
+      },
     );
 
     try {
@@ -334,7 +334,7 @@ export default class AnimatedText {
         easing: "ease-in-out",
         direction: "alternate",
         iterations: Infinity,
-      }
+      },
     );
   }
 
@@ -349,7 +349,7 @@ export default class AnimatedText {
         duration: this.options.charBlurDuration,
         easing: CHAR_BLUR_EASING,
         fill: "forwards",
-      }
+      },
     );
 
     blurAnim.finished
@@ -388,8 +388,8 @@ export default class AnimatedText {
 
     const chars = Array.from(
       this.container.querySelectorAll(
-        'span[data-kind="char"], span[data-kind="char-deleting"]'
-      )
+        'span[data-kind="char"], span[data-kind="char-deleting"]',
+      ),
     ) as HTMLElement[];
 
     if (!chars.length) {
@@ -401,7 +401,7 @@ export default class AnimatedText {
     const animations: Promise<unknown>[] = [];
     chars.forEach((outer) => {
       const inner = outer.querySelector(
-        'span[data-kind="inner-char"]'
+        'span[data-kind="inner-char"]',
       ) as HTMLElement | null;
       if (!inner) return;
 
@@ -425,7 +425,7 @@ export default class AnimatedText {
           duration: 250,
           easing: "ease-in",
           fill: "forwards",
-        }
+        },
       );
       animations.push(anim.finished.then(() => outer.remove()).catch(() => {}));
     });
@@ -434,7 +434,7 @@ export default class AnimatedText {
 
     // Remove any lingering word / line wrappers
     const wrappers = this.container.querySelectorAll(
-      'span[data-type="word"], span[data-type="line"]'
+      'span[data-type="word"], span[data-type="line"]',
     );
     wrappers.forEach((el) => el.remove());
 

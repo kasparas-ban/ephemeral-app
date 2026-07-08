@@ -14,7 +14,9 @@ type Rect = {
   height: number;
 };
 
-test("connected users appear and disappear from presence", async ({ browser }) => {
+test("connected users appear and disappear from presence", async ({
+  browser,
+}) => {
   const first = await openUser(browser);
   await expect(remoteCompositions(first.page)).toHaveCount(0);
 
@@ -41,7 +43,9 @@ test("three users each see all other connected users", async ({ browser }) => {
   await closeUser(first);
 });
 
-test("connected user slots do not overlap the local slot", async ({ browser }) => {
+test("connected user slots do not overlap the local slot", async ({
+  browser,
+}) => {
   const users: TestUser[] = [];
 
   try {
@@ -51,9 +55,9 @@ test("connected user slots do not overlap the local slot", async ({ browser }) =
 
     for (const user of users) {
       await expect(remoteCompositions(user.page)).toHaveCount(3);
-      await expect(user.page.getByTestId("remote-composition-slot")).toHaveCount(
-        3
-      );
+      await expect(
+        user.page.getByTestId("remote-composition-slot"),
+      ).toHaveCount(3);
       await expectSlotsToNotOverlap(user.page);
     }
   } finally {
@@ -70,7 +74,7 @@ async function expectSlotsToNotOverlap(page: Page) {
         const rects = await readSlotRects(page);
         return rects.length === 4 && !hasIntersectingRects(rects);
       },
-      { message: "local and remote composition slots should not overlap" }
+      { message: "local and remote composition slots should not overlap" },
     )
     .toBe(true);
 }
@@ -81,7 +85,7 @@ async function readSlotRects(page: Page): Promise<Rect[]> {
       [
         '[data-testid="local-composition-slot"]',
         '[data-testid="remote-composition-slot"]',
-      ].join(", ")
+      ].join(", "),
     )
     .evaluateAll((slots) =>
       slots.map((slot) => {
@@ -92,7 +96,7 @@ async function readSlotRects(page: Page): Promise<Rect[]> {
           width: rect.width,
           height: rect.height,
         };
-      })
+      }),
     );
 }
 

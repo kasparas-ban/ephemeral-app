@@ -31,10 +31,7 @@ export default defineConfig([
     },
     rules: {
       "simple-import-sort/exports": "error",
-      "simple-import-sort/imports": [
-        "error",
-        { groups: importGroups },
-      ],
+      "simple-import-sort/imports": ["error", { groups: importGroups }],
     },
   },
 ]);

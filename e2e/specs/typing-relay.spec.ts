@@ -8,7 +8,9 @@ import {
   remoteText,
 } from "../fixtures/app";
 
-test("typing in one browser renders in another browser", async ({ browser }) => {
+test("typing in one browser renders in another browser", async ({
+  browser,
+}) => {
   const { first, second } = await openTwoUsers(browser);
 
   await localInput(first.page).pressSequentially("hello");
@@ -20,7 +22,9 @@ test("typing in one browser renders in another browser", async ({ browser }) => 
   await closeUser(first);
 });
 
-test("typing input accepts only printable keyboard characters", async ({ browser }) => {
+test("typing input accepts only printable keyboard characters", async ({
+  browser,
+}) => {
   const { first, second } = await openTwoUsers(browser);
   const mixedText = "A\u{1F642}z\u00e90\u20149\u201c ~!@\u4e2d";
 
@@ -31,7 +35,7 @@ test("typing input accepts only printable keyboard characters", async ({ browser
         data: "paste",
         bubbles: true,
         cancelable: true,
-      })
+      }),
     );
   });
   await expect(remoteText(second.page)).toHaveText("");
@@ -44,7 +48,7 @@ test("typing input accepts only printable keyboard characters", async ({ browser
           data: char,
           bubbles: true,
           cancelable: true,
-        })
+        }),
       );
     }
   }, mixedText);
@@ -55,7 +59,9 @@ test("typing input accepts only printable keyboard characters", async ({ browser
   await closeUser(first);
 });
 
-test("backspace and enter relay as delete and clear actions", async ({ browser }) => {
+test("backspace and enter relay as delete and clear actions", async ({
+  browser,
+}) => {
   const { first, second } = await openTwoUsers(browser);
 
   await localInput(first.page).pressSequentially("hey");
@@ -84,7 +90,7 @@ test("beforeinput delete relays as a back action", async ({ browser }) => {
         data: null,
         bubbles: true,
         cancelable: true,
-      })
+      }),
     );
   });
   await expectCompositionText(second.page, "he");
@@ -93,7 +99,9 @@ test("beforeinput delete relays as a back action", async ({ browser }) => {
   await closeUser(first);
 });
 
-test("remote typing does not mutate the local user's own composition", async ({ browser }) => {
+test("remote typing does not mutate the local user's own composition", async ({
+  browser,
+}) => {
   const { first, second } = await openTwoUsers(browser);
 
   await localInput(first.page).pressSequentially("abc");
@@ -104,7 +112,9 @@ test("remote typing does not mutate the local user's own composition", async ({ 
   await closeUser(first);
 });
 
-test("remote spaces do not shift the local user's visible characters", async ({ browser }) => {
+test("remote spaces do not shift the local user's visible characters", async ({
+  browser,
+}) => {
   const { first, second } = await openTwoUsers(browser);
 
   await localInput(second.page).pressSequentially("x");
@@ -123,7 +133,7 @@ test("remote spaces do not shift the local user's visible characters", async ({ 
         .getByTestId("local-composition-text")
         .locator('span[data-kind="char"]')
         .first()
-        .evaluate((el) => (el as HTMLElement).dataset.tx)
+        .evaluate((el) => (el as HTMLElement).dataset.tx),
     )
     .toBe(beforeTransform);
 

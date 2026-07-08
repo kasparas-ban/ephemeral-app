@@ -13,10 +13,9 @@ import useVisibleViewport from "@/hooks/useVisibleViewport";
 import type { Point, Rect, Size } from "@/lib/spatial";
 import { spatial } from "@/lib/spatial";
 import { connectedUsersAtom } from "@/stores/stores";
-import {
-  isKeyboardOpenAtom,
-  visibleViewportRectAtom,
-} from "@/stores/viewport";
+import { isKeyboardOpenAtom, visibleViewportRectAtom } from "@/stores/viewport";
+
+import InfoOverlay from "./info-overlay";
 
 const CANVAS_PADDING = 24;
 const EPHEMERAL_GAP = 36;
@@ -57,7 +56,7 @@ export default function EphemeralApp() {
           }
           aria-expanded={isInfoOpen}
           onClick={() => setIsInfoOpen((open) => !open)}
-          className="absolute right-4 top-4 z-40 inline-flex h-10 w-10 items-center justify-center rounded-full border border-neutral-300 bg-white/85 text-neutral-900 shadow-sm backdrop-blur transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2 active:scale-95"
+          className="absolute top-4 right-4 z-40 inline-flex h-10 w-10 items-center justify-center rounded-full border border-neutral-300 bg-white/85 text-neutral-900 shadow-sm backdrop-blur transition hover:bg-white focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2 focus-visible:outline-none active:scale-95"
         >
           {isInfoOpen ? (
             <X aria-hidden="true" className="h-5 w-5" strokeWidth={2.25} />
@@ -70,50 +69,22 @@ export default function EphemeralApp() {
   );
 }
 
-function InfoOverlay() {
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="app-info-title"
-      className="absolute inset-0 z-30 grid place-items-center bg-white/45 px-6 text-neutral-950 backdrop-blur-md"
-    >
-      <section className="max-w-[min(34rem,calc(100vw-3rem))] text-center">
-        <h1
-          id="app-info-title"
-          className="text-2xl font-semibold leading-tight sm:text-3xl"
-        >
-          Ephemeral is a shared typing canvas.
-        </h1>
-        <p className="mt-4 text-sm leading-6 text-neutral-700 sm:text-base sm:leading-7">
-          Type and your words appear live in the space for everyone connected.
-          Other people&apos;s thoughts drift in as anonymous, temporary text, then
-          fade away so the room stays light, present, and unrecorded.
-        </p>
-      </section>
-    </div>
-  );
-}
-
 function EphemeralLayer() {
   const connectedUsers = useAtomValue(connectedUsersAtom);
   const isKeyboardOpen = useAtomValue(isKeyboardOpenAtom);
   const viewportRect = useAtomValue(visibleViewportRectAtom);
-  const viewportSize = useMemo(
-    () => getRectSize(viewportRect),
-    [viewportRect],
-  );
+  const viewportSize = useMemo(() => getRectSize(viewportRect), [viewportRect]);
   const canvasBounds = useMemo(
     () => createCanvasBounds(viewportSize),
-    [viewportSize]
+    [viewportSize],
   );
   const slotSize = useMemo(
     () => createEphemeralSlotSize(viewportSize),
-    [viewportSize]
+    [viewportSize],
   );
   const localRect = useMemo(
     () => createLocalRect(viewportSize, slotSize, isKeyboardOpen),
-    [isKeyboardOpen, slotSize, viewportSize]
+    [isKeyboardOpen, slotSize, viewportSize],
   );
   const placements = useMemo(
     () =>
@@ -124,7 +95,7 @@ function EphemeralLayer() {
         reservedRects: [localRect],
         gap: EPHEMERAL_GAP,
       }),
-    [canvasBounds, connectedUsers, localRect, slotSize]
+    [canvasBounds, connectedUsers, localRect, slotSize],
   );
 
   return (
@@ -178,7 +149,7 @@ function EphemeralSlot({
   return (
     <div
       data-testid={testId}
-      className="absolute pointer-events-none"
+      className="pointer-events-none absolute"
       style={{
         width: size.width,
         height: size.height,
@@ -199,7 +170,7 @@ function CompositionAnchor({
 }) {
   return (
     <div
-      className="absolute pointer-events-auto top-1/2 -translate-y-1/2"
+      className="pointer-events-auto absolute top-1/2 -translate-y-1/2"
       style={{
         left: slotWidth - EPHEMERAL_CARET_INSET_RIGHT,
       }}
@@ -222,8 +193,8 @@ function LocalCompositionAnchor({
     <div
       className={
         isKeyboardOpen
-          ? "absolute pointer-events-auto bottom-0 flex"
-          : "absolute pointer-events-auto top-1/2 -translate-y-1/2"
+          ? "pointer-events-auto absolute bottom-0 flex"
+          : "pointer-events-auto absolute top-1/2 -translate-y-1/2"
       }
       style={{
         left: slotWidth - EPHEMERAL_CARET_INSET_RIGHT,
@@ -247,7 +218,7 @@ function createEphemeralSlotSize(size: Size): Size {
   return {
     width: Math.max(
       EPHEMERAL_CARET_INSET_RIGHT,
-      Math.min(EPHEMERAL_SLOT_MAX_SIZE.width, size.width / 2)
+      Math.min(EPHEMERAL_SLOT_MAX_SIZE.width, size.width / 2),
     ),
     height: EPHEMERAL_SLOT_MAX_SIZE.height,
   };
@@ -256,7 +227,7 @@ function createEphemeralSlotSize(size: Size): Size {
 function createLocalRect(
   size: Size,
   slotSize: Size,
-  isKeyboardOpen: boolean
+  isKeyboardOpen: boolean,
 ): Rect {
   const bottomInset = isKeyboardOpen ? KEYBOARD_INPUT_GAP : CANVAS_PADDING;
   const centeredX =
@@ -273,20 +244,13 @@ function createLocalRect(
     : size.width - slotSize.width - CANVAS_PADDING;
 
   return {
-    x: clamp(
-      x,
-      CANVAS_PADDING,
-      Math.max(CANVAS_PADDING, maxX)
-    ),
+    x: clamp(x, CANVAS_PADDING, Math.max(CANVAS_PADDING, maxX)),
     y: clamp(
       isKeyboardOpen
         ? size.height - slotSize.height - KEYBOARD_INPUT_GAP
         : size.height / 2 - slotSize.height / 2,
       CANVAS_PADDING,
-      Math.max(
-        CANVAS_PADDING,
-        size.height - slotSize.height - bottomInset
-      )
+      Math.max(CANVAS_PADDING, size.height - slotSize.height - bottomInset),
     ),
     ...slotSize,
   };

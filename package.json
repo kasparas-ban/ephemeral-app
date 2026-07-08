@@ -9,12 +9,16 @@
   "devDependencies": {
     "@playwright/test": "^1.60.0",
     "@types/node": "^26.0.0",
+    "prettier": "^3.8.4",
+    "prettier-plugin-tailwindcss": "^0.8.0",
     "turbo": "^2.9.18"
   },
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
     "lint": "turbo lint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "typecheck": "turbo typecheck",
     "test:e2e": "playwright test",
     "test:e2e:dev": "playwright test --config playwright.dev.config.ts",

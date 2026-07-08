@@ -33,7 +33,9 @@ test("unknown pages route to the home page", async ({ page }) => {
   await expect(page.getByTestId("local-composition")).toBeVisible();
 });
 
-test("info button opens a blurred full-screen explanation", async ({ page }) => {
+test("info button opens a blurred full-screen explanation", async ({
+  page,
+}) => {
   await page.goto("/");
 
   await page.getByRole("button", { name: "Show app information" }).click();
@@ -89,10 +91,10 @@ test("mobile centers the local input with a half-width slot", async ({
 
   const metrics = await page.evaluate(() => {
     const slot = document.querySelector<HTMLElement>(
-      '[data-testid="local-composition-slot"]'
+      '[data-testid="local-composition-slot"]',
     );
     const composition = document.querySelector<HTMLElement>(
-      '[data-testid="local-composition"]'
+      '[data-testid="local-composition"]',
     );
 
     if (!slot || !composition) {
@@ -137,9 +139,7 @@ test("mobile prevents consecutive spaces and double-space punctuation", async ({
 
   await dispatchBeforeInput(input, "a");
   await expect(chars).toHaveCount(2);
-  await expect
-    .poll(async () => localText(page).textContent())
-    .toBe(" a");
+  await expect.poll(async () => localText(page).textContent()).toBe(" a");
 });
 
 test("expired local text does not force the next space onto a new line", async ({
@@ -157,9 +157,7 @@ test("expired local text does not force the next space onto a new line", async (
   }
   await expect(chars).toHaveCount(15);
 
-  await expect
-    .poll(async () => countCollectedBlurAnimations(page))
-    .toBe(15);
+  await expect.poll(async () => countCollectedBlurAnimations(page)).toBe(15);
   await finishCollectedBlurAnimations(page);
   await expect(chars).toHaveCount(0);
 

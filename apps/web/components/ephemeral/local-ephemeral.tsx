@@ -8,10 +8,7 @@ import { atom, useAtomValue } from "jotai";
 import type { TypingAction } from "@/lib/types";
 import { actionToClientMessage, inputEventToAction } from "@/lib/typing";
 import { wsClientAtom } from "@/stores/stores";
-import {
-  hasOnScreenKeyboardAtom,
-  isKeyboardOpenAtom,
-} from "@/stores/viewport";
+import { hasOnScreenKeyboardAtom, isKeyboardOpenAtom } from "@/stores/viewport";
 
 import Composition, { type CompositionHandle } from "./composition";
 
@@ -36,10 +33,8 @@ export default function LocalEphemeral() {
     const action = inputEventToAction(event);
     if (!action) return;
     if (
-      hasOnScreenKeyboard && shouldSuppressMobileSpaceInput(
-        action,
-        lastAcceptedActionRef.current,
-      )
+      hasOnScreenKeyboard &&
+      shouldSuppressMobileSpaceInput(action, lastAcceptedActionRef.current)
     ) {
       return;
     }
@@ -94,7 +89,7 @@ export default function LocalEphemeral() {
           type="button"
           data-testid="local-composition-start-typing"
           onClick={() => compositionRef.current?.focus()}
-          className="absolute left-1/2 top-[calc(100%+0.75rem)] -translate-x-1/2 whitespace-nowrap rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm font-medium text-neutral-900 shadow-sm transition active:scale-95"
+          className="absolute top-[calc(100%+0.75rem)] left-1/2 -translate-x-1/2 rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm font-medium whitespace-nowrap text-neutral-900 shadow-sm transition active:scale-95"
         >
           Start typing
         </button>

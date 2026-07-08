@@ -92,7 +92,7 @@ export class SpatialIndex {
         bounds,
         itemSize,
         occupiedRects,
-        gap
+        gap,
       );
       this.positions.set(userId, point);
       placements.set(userId, point);
@@ -111,7 +111,7 @@ export class SpatialIndex {
     bounds: Rect,
     itemSize: Size,
     occupiedRects: Rect[],
-    gap: number
+    gap: number,
   ): Point {
     const candidates = [
       ...randomCandidates(`${this.seed}:${userId}:layout`, bounds, itemSize),
@@ -123,7 +123,7 @@ export class SpatialIndex {
       occupiedRects,
       itemSize,
       bounds,
-      gap
+      gap,
     );
     if (openCandidate) return openCandidate;
 
@@ -132,7 +132,7 @@ export class SpatialIndex {
       occupiedRects,
       itemSize,
       bounds,
-      gap
+      gap,
     );
   }
 }
@@ -192,7 +192,7 @@ function fits(rect: Rect, bounds: Rect): boolean {
 
 function overlapsAny(rect: Rect, occupiedRects: Rect[], gap: number): boolean {
   return occupiedRects.some((occupied) =>
-    intersects(inflate(rect, gap), occupied)
+    intersects(inflate(rect, gap), occupied),
   );
 }
 
@@ -217,7 +217,7 @@ function inflate(rect: Rect, amount: number): Rect {
 function* randomCandidates(
   seedInput: string,
   bounds: Rect,
-  itemSize: Size
+  itemSize: Size,
 ): Generator<Point> {
   const rand = mulberry32(hashString(seedInput));
   const maxX = Math.max(bounds.x, bounds.x + bounds.width - itemSize.width);
@@ -236,7 +236,7 @@ function* randomCandidates(
 function gridCandidates(
   seedInput: string,
   bounds: Rect,
-  itemSize: Size
+  itemSize: Size,
 ): Point[] {
   const points: Point[] = [];
   const maxX = bounds.x + bounds.width - itemSize.width;
@@ -260,7 +260,7 @@ function mostCentralOpenCandidate(
   occupiedRects: Rect[],
   itemSize: Size,
   bounds: Rect,
-  gap: number
+  gap: number,
 ): Point | null {
   let best: Point | null = null;
   let bestScore = Number.POSITIVE_INFINITY;
@@ -289,7 +289,7 @@ function leastOverlappingCandidate(
   occupiedRects: Rect[],
   itemSize: Size,
   bounds: Rect,
-  gap: number
+  gap: number,
 ): Point {
   let best = candidates[0] ?? { x: bounds.x, y: bounds.y };
   let bestOverlapScore = Number.POSITIVE_INFINITY;
@@ -302,7 +302,7 @@ function leastOverlappingCandidate(
     const overlapScore = occupiedRects.reduce(
       (total, occupied) =>
         total + intersectionArea(inflate(candidateRect, gap), occupied),
-      0
+      0,
     );
     const centerScore = centerDistanceScore(candidateRect, bounds);
 
@@ -334,11 +334,11 @@ function centerDistanceScore(rect: Rect, bounds: Rect): number {
 function intersectionArea(a: Rect, b: Rect): number {
   const width = Math.max(
     0,
-    Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x)
+    Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x),
   );
   const height = Math.max(
     0,
-    Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y)
+    Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y),
   );
   return width * height;
 }

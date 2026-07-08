@@ -1,12 +1,7 @@
 "use client";
 
 import type { KeyboardEvent, Ref, SyntheticEvent } from "react";
-import {
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useRef,
-} from "react";
+import { useCallback, useEffect, useImperativeHandle, useRef } from "react";
 
 import { PrimitiveAtom, useSetAtom } from "jotai";
 
@@ -115,7 +110,7 @@ export default function Composition({
       },
       focus: focusEditable,
     }),
-    [focusEditable, setText, showCaretWhileTyping]
+    [focusEditable, setText, showCaretWhileTyping],
   );
 
   useEffect(() => {
@@ -151,13 +146,13 @@ export default function Composition({
   }, [editable, onBeforeInput]);
 
   return (
-    <div className="relative flex text-xl h-lh" data-testid={testId}>
+    <div className="relative flex h-lh text-xl" data-testid={testId}>
       <div
         ref={textContainerRef}
         data-testid={testId ? `${testId}-text` : "composition-text"}
         className={cn(
-          "absolute pointer-events-none right-[3px] whitespace-nowrap",
-          textClassName
+          "pointer-events-none absolute right-[3px] whitespace-nowrap",
+          textClassName,
         )}
       />
 
@@ -166,12 +161,12 @@ export default function Composition({
         <div
           ref={caretRef}
           className={cn(
-            "w-0.5 border-r-2 bg-gray-600 h-full border-none",
+            "h-full w-0.5 border-r-2 border-none bg-gray-600",
             caretClassName,
-            styles["caret"]
+            styles["caret"],
           )}
         />
-        <div className="absolute inset-0 w-8 bg-white left-0.5" />
+        <div className="absolute inset-0 left-0.5 w-8 bg-white" />
       </div>
 
       {/* Real editable target: present, focusable, but visually transparent */}
@@ -189,7 +184,7 @@ export default function Composition({
         onInput={editable ? onInput : undefined}
         onCompositionEnd={editable ? onInput : undefined}
         onKeyDown={editable ? onKeyDown : undefined}
-        className="relative w-0 h-full outline-none overflow-hidden text-transparent caret-transparent selection:bg-transparent"
+        className="relative h-full w-0 overflow-hidden text-transparent caret-transparent outline-none selection:bg-transparent"
       />
     </div>
   );
