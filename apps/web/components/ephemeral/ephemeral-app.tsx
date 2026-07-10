@@ -4,8 +4,8 @@ import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
 import { useAtomValue } from "jotai";
-import { Info, X } from "lucide-react";
-import { AnimatePresence } from "motion/react";
+import { Info } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
 import WorldCanvas from "@/components/canvas/WorldCanvas";
 import LocalEphemeral from "@/components/ephemeral/local-ephemeral";
@@ -30,6 +30,7 @@ export default function EphemeralApp() {
 
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const viewportRect = useAtomValue(visibleViewportRectAtom);
+  const reduceMotion = useReducedMotion();
 
   return (
     <div className="font-sans">
@@ -48,23 +49,32 @@ export default function EphemeralApp() {
           </WorldCanvas>
         </div>
 
-        <AnimatePresence>{isInfoOpen && <InfoOverlay />}</AnimatePresence>
+        <AnimatePresence>
+          {isInfoOpen && <InfoOverlay onClose={() => setIsInfoOpen(false)} />}
+        </AnimatePresence>
 
-        <button
-          type="button"
-          aria-label={
-            isInfoOpen ? "Close app information" : "Show app information"
-          }
-          aria-expanded={isInfoOpen}
-          onClick={() => setIsInfoOpen((open) => !open)}
-          className="absolute top-4 right-4 z-40 inline-flex h-10 w-10 items-center justify-center rounded-full border border-neutral-300 bg-white/85 text-neutral-900 shadow-sm backdrop-blur transition hover:bg-white focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2 focus-visible:outline-none active:scale-95"
-        >
-          {isInfoOpen ? (
-            <X aria-hidden="true" className="h-5 w-5" strokeWidth={2.25} />
-          ) : (
-            <Info aria-hidden="true" className="h-5 w-5" strokeWidth={2.25} />
+        <AnimatePresence initial={false}>
+          {!isInfoOpen && (
+            <motion.button
+              type="button"
+              aria-label="Show app information"
+              aria-expanded={isInfoOpen}
+              onClick={() => setIsInfoOpen(true)}
+              className="absolute top-4 right-4 z-40 inline-flex h-10 w-10 items-center justify-center rounded-full border border-neutral-300 bg-white/85 text-neutral-900 shadow-sm backdrop-blur transition-colors hover:bg-white focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2 focus-visible:outline-none"
+              initial={{ opacity: 0, scale: 0.6 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.6 }}
+              whileTap={{ scale: 0.95 }}
+              transition={
+                reduceMotion
+                  ? { duration: 0 }
+                  : { duration: 0.2, ease: "easeOut" }
+              }
+            >
+              <Info aria-hidden="true" className="h-5 w-5" strokeWidth={2.25} />
+            </motion.button>
           )}
-        </button>
+        </AnimatePresence>
       </main>
     </div>
   );

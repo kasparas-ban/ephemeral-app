@@ -2,7 +2,7 @@
 
 import { motion, type Transition, useReducedMotion } from "motion/react";
 
-export default function InfoOverlay() {
+export default function InfoOverlay({ onClose }: { onClose: () => void }) {
   const reduceMotion = useReducedMotion();
   const instant = (transition: Transition) =>
     reduceMotion ? { duration: 0 } : transition;
@@ -52,6 +52,13 @@ export default function InfoOverlay() {
           Other people&apos;s thoughts drift in as anonymous, temporary text,
           then fade away so the room stays light, present, and unrecorded.
         </p>
+        <button
+          type="button"
+          onClick={onClose}
+          className="mt-8 inline-flex items-center justify-center rounded-full border border-neutral-300 bg-white/85 px-6 py-2.5 text-sm font-medium text-neutral-900 shadow-sm backdrop-blur transition hover:bg-white focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2 focus-visible:outline-none active:scale-95"
+        >
+          Back
+        </button>
       </motion.section>
     </motion.div>
   );
