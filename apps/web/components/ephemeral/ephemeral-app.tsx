@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 
 import { useAtomValue } from "jotai";
 import { Info, X } from "lucide-react";
+import { AnimatePresence } from "motion/react";
 
 import WorldCanvas from "@/components/canvas/WorldCanvas";
 import LocalEphemeral from "@/components/ephemeral/local-ephemeral";
@@ -47,7 +48,7 @@ export default function EphemeralApp() {
           </WorldCanvas>
         </div>
 
-        {isInfoOpen && <InfoOverlay />}
+        <AnimatePresence>{isInfoOpen && <InfoOverlay />}</AnimatePresence>
 
         <button
           type="button"
