@@ -57,7 +57,7 @@ test("info button opens a blurred full-screen explanation", async ({
   await page.keyboard.press("Escape");
   await expect(dialog).toBeVisible();
 
-  await page.getByRole("button", { name: "Close app information" }).click();
+  await dialog.getByRole("button", { name: "Back" }).click();
   await expect(dialog).toHaveCount(0);
 });
 

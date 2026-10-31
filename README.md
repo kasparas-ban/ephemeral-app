@@ -15,14 +15,11 @@ tsconfig.base.json     # shared TS config
 ## Prerequisites
 
 - Node.js and PNPM (workspace uses PNPM)
-- Go 1.22+
-- Air (Go hot reload) — install with:
+- Go 1.25+
 
-```bash
-go install github.com/air-verse/air@latest
-```
-
-Ensure your `GOBIN` is on `PATH` so `air` is available.
+Go dev tools (Air for hot reload, staticcheck) are pinned in
+`apps/api/go.mod` via `tool` directives and run with `go tool`, so there is
+nothing extra to install.
 
 ## Install
 
@@ -95,13 +92,26 @@ pnpm -C apps/web start          # Next.js
 pnpm -C apps/api start          # Go binary (built at apps/api/bin/api)
 ```
 
-## Useful Commands
+## Checks
 
 ```bash
-pnpm -r lint            # run lint across workspace (if configured)
-pnpm -r typecheck       # run typecheck across workspace (if configured)
+pnpm check              # format check + lint + typecheck + unit tests (seconds)
+pnpm verify             # check + Chromium-only E2E; run before calling work done
+```
+
+Individual pieces:
+
+```bash
+pnpm format             # Prettier + gofmt (write)
+pnpm format:check       # Prettier + gofmt (check only)
+pnpm lint               # ESLint (zero warnings) + go vet + staticcheck
+pnpm typecheck          # tsc --noEmit + go build
+pnpm test               # Vitest (apps/web) + go test (apps/api)
+pnpm -C apps/web test:watch
 pnpm clean              # turbo clean
 ```
+
+Web unit tests live next to the code as `*.test.ts(x)` and run with Vitest.
 
 ## End-to-End Tests
 
@@ -111,6 +121,7 @@ Next.js server on test-only ports.
 ```bash
 pnpm exec playwright install chromium firefox webkit
 pnpm test:e2e          # Chromium, Firefox, WebKit, and mobile Chrome
+pnpm test:e2e:fast     # Chromium only (used by pnpm verify)
 pnpm test:e2e:ui       # interactive Playwright runner
 pnpm test:e2e:debug    # headed debug mode
 pnpm test:e2e:report   # open the latest HTML report
