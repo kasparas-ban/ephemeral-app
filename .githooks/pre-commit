@@ -1,0 +1,9 @@
+#!/bin/sh
+# Vercel can't download from the Wix npm mirror, so its URLs must not reach the lockfile.
+if git diff --cached --name-only | grep -qx pnpm-lock.yaml &&
+  git show :pnpm-lock.yaml | grep -q npm.dev.wixpress.com; then
+  echo "pnpm-lock.yaml contains npm.dev.wixpress.com tarball URLs, which break Vercel installs."
+  echo "Strip them, then stage the lockfile again:"
+  echo "  sed -i '' -E 's/, tarball: https:\\/\\/npm\\.dev\\.wixpress\\.com[^}]*}/}/' pnpm-lock.yaml"
+  exit 1
+fi
