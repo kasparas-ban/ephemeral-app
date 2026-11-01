@@ -146,15 +146,7 @@ func TestHub_BroadcastMessageExceptSendsToOtherClients(t *testing.T) {
 	drainChannel(receiverA.send)
 	drainChannel(receiverB.send)
 
-	payload := struct {
-		Type string `json:"type"`
-		Body string `json:"body"`
-	}{
-		Type: "custom",
-		Body: "hello",
-	}
-
-	h.BroadcastMessageExcept(sender, payload)
+	h.BroadcastMessageExcept(sender, RelayMessage{Type: "typing_update", UserID: sender.userID, Char: "h"})
 
 	for _, client := range []*Client{receiverA, receiverB} {
 		raw := readWithTimeout(client.send, 200*time.Millisecond)
@@ -162,49 +154,18 @@ func TestHub_BroadcastMessageExceptSendsToOtherClients(t *testing.T) {
 			t.Fatalf("expected broadcast message for %s, got none", client.userID)
 		}
 
-		var msg struct {
-			Type string `json:"type"`
-			Body string `json:"body"`
-			User string `json:"user"`
-		}
+		var msg RelayMessage
 		if err := json.Unmarshal(raw, &msg); err != nil {
 			t.Fatalf("unmarshal broadcast for %s: %v", client.userID, err)
 		}
 
-		if msg.Type != "custom" || msg.Body != "hello" {
+		if msg.Type != "typing_update" || msg.UserID != sender.userID || msg.Char != "h" {
 			t.Fatalf("unexpected broadcast payload for %s: %+v", client.userID, msg)
 		}
 	}
 
 	if raw := readWithTimeout(sender.send, 150*time.Millisecond); raw != nil {
 		t.Fatalf("expected sender to be excluded from broadcast, got %s", string(raw))
-	}
-}
-
-func TestHub_BroadcastMessageExceptSkipsOnMarshalError(t *testing.T) {
-	h := NewHub()
-	go h.Run()
-
-	sender := newTestClient(h, "sender", 10)
-	receiver := newTestClient(h, "receiver", 10)
-
-	h.Register(sender)
-	h.Register(receiver)
-
-	// Drain presence messages caused by registering receiver (to sender) and presence to the newly registered receiver.
-	drainChannel(sender.send)
-	drainChannel(receiver.send)
-
-	// json cannot marshal a channel, which should trigger the error path.
-	msg := map[string]any{
-		"type":    "broken",
-		"payload": make(chan int),
-	}
-
-	h.BroadcastMessageExcept(sender, msg)
-
-	if raw := readWithTimeout(receiver.send, 150*time.Millisecond); raw != nil {
-		t.Fatalf("expected no broadcast after marshal error, got %s", string(raw))
 	}
 }
 
@@ -220,8 +181,9 @@ func TestHub_UnregisterUnknownClientDoesNothing(t *testing.T) {
 
 	h.unregister <- ghost
 
-	// Give the hub time to process the unregister request.
-	time.Sleep(20 * time.Millisecond)
+	if raw := readWithTimeout(existing.send, 100*time.Millisecond); raw != nil {
+		t.Fatalf("expected no presence update when unregistering unknown client, got %s", string(raw))
+	}
 
 	select {
 	case _, ok := <-ghost.send:
@@ -229,10 +191,6 @@ func TestHub_UnregisterUnknownClientDoesNothing(t *testing.T) {
 			t.Fatalf("expected send channel for unknown client to remain open")
 		}
 	default:
-	}
-
-	if raw := readWithTimeout(existing.send, 100*time.Millisecond); raw != nil {
-		t.Fatalf("expected no presence update when unregistering unknown client, got %s", string(raw))
 	}
 }
 

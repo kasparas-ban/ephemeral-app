@@ -111,7 +111,7 @@ func (h *Hub) trySend(c *Client, data []byte) bool {
 	}
 }
 
-func (h *Hub) BroadcastMessageExcept(sender *Client, msg any) {
+func (h *Hub) BroadcastMessageExcept(sender *Client, msg RelayMessage) {
 	data, err := json.Marshal(msg)
 	if err != nil {
 		log.Printf("Error marshaling message: %v", err)
