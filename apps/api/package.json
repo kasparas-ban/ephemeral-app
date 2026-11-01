@@ -2,10 +2,13 @@
   "name": "api",
   "private": true,
   "scripts": {
-    "dev": "air -c air.toml",
+    "dev": "go tool air -c air.toml",
     "build": "go build -o ./bin/api",
     "start": "./bin/api",
-    "lint": "go vet ./...",
-    "typecheck": "echo 'no ts typecheck'"
+    "format": "gofmt -w .",
+    "format:check": "test -z \"$(gofmt -l .)\" || { echo 'Unformatted Go files (run pnpm -C apps/api format):'; gofmt -l .; exit 1; }",
+    "lint": "pnpm format:check && go vet ./... && go tool staticcheck ./...",
+    "test": "go test ./...",
+    "typecheck": "go build ./..."
   }
 }

@@ -154,7 +154,7 @@ function hashString(str: string): number {
   }
   h = Math.imul(h ^ (h >>> 16), 2246822507);
   h = Math.imul(h ^ (h >>> 13), 3266489909);
-  return (h ^= h >>> 16) >>> 0;
+  return (h ^ (h >>> 16)) >>> 0;
 }
 
 /** mulberry32: tiny, fast, deterministic PRNG returning floats in [0, 1). */

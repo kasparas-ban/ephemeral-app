@@ -56,6 +56,9 @@ export default function DevSimulatorPanel() {
   useEffect(() => {
     if (!running) return;
     controllerRef.current?.start(options);
+    // Restart only when the bot count changes; other option changes are
+    // applied in place by the updateOptions effect above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [botCount, running]);
 
   const openBotCount = bots.filter((bot) => bot.status === "open").length;

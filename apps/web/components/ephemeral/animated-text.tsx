@@ -89,12 +89,8 @@ export default class AnimatedText {
     }
 
     // Get the last word for this line (inside wrapper if present)
-    let lastWord: HTMLElement | null = null;
-    if (existingLineWrapper) {
-      lastWord = existingLineWrapper.lastElementChild as HTMLElement;
-    } else {
-      lastWord = this.container.lastElementChild as HTMLElement;
-    }
+    const lastWord = (existingLineWrapper ?? this.container)
+      .lastElementChild as HTMLElement | null;
     if (!lastWord) return;
 
     const charInnerEl = document.createElement("span");
