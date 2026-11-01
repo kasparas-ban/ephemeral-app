@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	writeWait      = 60 * time.Second
+	writeWait      = 10 * time.Second
 	pongWait       = 90 * time.Second
 	pingPeriod     = 30 * time.Second
 	maxMessageSize = 512

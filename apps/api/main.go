@@ -9,16 +9,21 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync/atomic"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/joho/godotenv"
 )
 
+// Each join sends Presence to everyone, so the cost grows with the square of
+// this number. It is far above what a side project expects.
+const maxVisitors = 200
+
 var upgrader = websocket.Upgrader{
-	ReadBufferSize:    1024,
-	WriteBufferSize:   1024,
-	EnableCompression: true,
-	CheckOrigin:       checkOrigin,
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+	CheckOrigin:     checkOrigin,
 }
 
 type config struct {
@@ -43,10 +48,16 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", healthHandler)
-	mux.HandleFunc("/connect", websocketHandler(hub))
+	mux.HandleFunc("/connect", websocketHandler(hub, maxVisitors))
+
+	server := &http.Server{
+		Addr:              cfg.Addr,
+		Handler:           mux,
+		ReadHeaderTimeout: 5 * time.Second,
+	}
 
 	fmt.Println("Go API listening on", cfg.Addr)
-	log.Fatal(http.ListenAndServe(cfg.Addr, mux))
+	log.Fatal(server.ListenAndServe())
 }
 
 func loadConfig() (config, error) {
@@ -116,10 +127,19 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func websocketHandler(hub *realtime.Hub) http.HandlerFunc {
+func websocketHandler(hub *realtime.Hub, maxVisitors int64) http.HandlerFunc {
+	var visitors atomic.Int64
+
 	return func(w http.ResponseWriter, r *http.Request) {
+		if visitors.Add(1) > maxVisitors {
+			visitors.Add(-1)
+			http.Error(w, "Too many Visitors, try again soon", http.StatusServiceUnavailable)
+			return
+		}
+
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
+			visitors.Add(-1)
 			log.Printf("WebSocket upgrade failed: %v", err)
 			return
 		}
@@ -128,6 +148,9 @@ func websocketHandler(hub *realtime.Hub) http.HandlerFunc {
 		hub.Register(client)
 
 		go client.WritePump()
-		go client.ReadPump()
+		go func() {
+			client.ReadPump()
+			visitors.Add(-1)
+		}()
 	}
 }

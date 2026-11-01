@@ -44,7 +44,7 @@ func TestIntegration_WebsocketTypingFlow(t *testing.T) {
 	go h.Run()
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/connect", websocketHandler(h))
+	mux.HandleFunc("/connect", websocketHandler(h, 10))
 
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
@@ -154,5 +154,47 @@ func TestIntegration_WebsocketTypingFlow(t *testing.T) {
 	}
 	if typing.UserID == "" {
 		t.Fatalf("expected user ID in typing update")
+	}
+}
+
+func TestWebsocketHandler_RejectsVisitorsBeyondTheLimit(t *testing.T) {
+	setAllowedOriginsForTest(t, "http://example.com")
+
+	h := realtime.NewHub()
+	go h.Run()
+
+	srv := httptest.NewServer(websocketHandler(h, 1))
+	defer srv.Close()
+
+	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http")
+	headers := http.Header{"Origin": {"http://example.com"}}
+
+	first, _, err := websocket.DefaultDialer.Dial(wsURL, headers)
+	if err != nil {
+		t.Fatalf("dial first visitor: %v", err)
+	}
+
+	_, resp, err := websocket.DefaultDialer.Dial(wsURL, headers)
+	if err == nil {
+		t.Fatal("expected the second visitor to be rejected")
+	}
+	if resp == nil || resp.StatusCode != http.StatusServiceUnavailable {
+		t.Fatalf("expected status 503, got %v", resp)
+	}
+
+	first.Close()
+
+	// The slot frees once the server notices the first visitor left.
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		conn, _, err := websocket.DefaultDialer.Dial(wsURL, headers)
+		if err == nil {
+			conn.Close()
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("expected a new visitor to connect after the first left: %v", err)
+		}
+		time.Sleep(20 * time.Millisecond)
 	}
 }
