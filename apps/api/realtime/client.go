@@ -14,6 +14,11 @@ const (
 	pongWait       = 90 * time.Second
 	pingPeriod     = 30 * time.Second
 	maxMessageSize = 512
+
+	// Faster than any typist or key repeat, slow enough that one Visitor
+	// can't flood everyone else's screen.
+	messagesPerSecond = 50
+	messageBurst      = 100
 )
 
 type Client struct {
@@ -21,6 +26,7 @@ type Client struct {
 	hub    *Hub
 	conn   *websocket.Conn
 	send   chan []byte
+	quota  messageQuota
 }
 
 func NewClient(hub *Hub, conn *websocket.Conn) *Client {
@@ -96,6 +102,10 @@ func (c *Client) WritePump() {
 }
 
 func (c *Client) handleMessage(data []byte) {
+	if !c.quota.allow(time.Now()) {
+		return
+	}
+
 	var msg RelayMessage
 	if err := json.Unmarshal(data, &msg); err != nil || !isValidTypingMessage(msg) {
 		log.Printf("Dropped invalid message from %s", c.userID)
@@ -117,4 +127,24 @@ func isValidTypingMessage(msg RelayMessage) bool {
 	default:
 		return false
 	}
+}
+
+// messageQuota is a token bucket whose zero value starts full.
+type messageQuota struct {
+	spent float64
+	last  time.Time
+}
+
+func (q *messageQuota) allow(now time.Time) bool {
+	if !q.last.IsZero() {
+		q.spent = max(0, q.spent-now.Sub(q.last).Seconds()*messagesPerSecond)
+	}
+	q.last = now
+
+	if q.spent+1 > messageBurst {
+		return false
+	}
+
+	q.spent++
+	return true
 }

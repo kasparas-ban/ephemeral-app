@@ -425,3 +425,60 @@ func TestClient_WritePumpFlushesAndClosesConnection(t *testing.T) {
 		t.Fatalf("expected websocket close, timed out instead")
 	}
 }
+
+func TestClient_handleMessage_dropsMessagesBeyondTheBurst(t *testing.T) {
+	h := NewHub()
+	go h.Run()
+
+	sender := newTestClient(h, "sender", 10)
+	receiver := newTestClient(h, "receiver", 2*messageBurst)
+	h.Register(sender)
+	h.Register(receiver)
+	drainChannel(receiver.send)
+
+	for range 2 * messageBurst {
+		sender.handleMessage([]byte(`{"type":"typing_update","char":"x"}`))
+	}
+
+	received := 0
+	for readWithTimeout(receiver.send, 100*time.Millisecond) != nil {
+		received++
+	}
+
+	// The loop takes microseconds, so at most one token refills.
+	if received < messageBurst || received > messageBurst+1 {
+		t.Fatalf("expected about %d relayed messages, got %d", messageBurst, received)
+	}
+}
+
+func TestMessageQuota_refillsAtTheSustainedRate(t *testing.T) {
+	var quota messageQuota
+	start := time.Unix(0, 0)
+
+	for i := range messageBurst {
+		if !quota.allow(start) {
+			t.Fatalf("expected message %d of the burst to be allowed", i+1)
+		}
+	}
+	if quota.allow(start) {
+		t.Fatal("expected the message after the burst to be dropped")
+	}
+
+	oneSecondLater := start.Add(time.Second)
+	allowed := 0
+	for quota.allow(oneSecondLater) {
+		allowed++
+	}
+	if allowed != messagesPerSecond {
+		t.Fatalf("expected %d messages after one second, got %d", messagesPerSecond, allowed)
+	}
+
+	muchLater := oneSecondLater.Add(time.Hour)
+	allowed = 0
+	for quota.allow(muchLater) {
+		allowed++
+	}
+	if allowed != messageBurst {
+		t.Fatalf("expected an idle quota to refill only to the burst of %d, got %d", messageBurst, allowed)
+	}
+}
