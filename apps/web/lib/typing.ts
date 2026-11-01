@@ -47,6 +47,31 @@ export function inputEventToAction(e: InputEvent): TypingAction | null {
 }
 
 /**
+ * IME adapter: the actions that turn the composition text already applied into
+ * the next composition text. Both strings must already be keyboard text.
+ */
+export function compositionToActions(
+  applied: string,
+  next: string,
+): TypingAction[] {
+  let common = 0;
+  while (common < applied.length && applied[common] === next[common]) {
+    common++;
+  }
+
+  const backs = Array.from(
+    { length: applied.length - common },
+    (): TypingAction => ({ kind: "back" }),
+  );
+  const chars = Array.from(
+    next.slice(common),
+    (char): TypingAction => ({ kind: "char", char }),
+  );
+
+  return [...backs, ...chars];
+}
+
+/**
  * Remote adapter: decode a server message into a typing action for a single
  * user. Returns null for messages that belong to another user or aren't typing
  * (e.g. presence), so a subscriber can filter purely on the return value.

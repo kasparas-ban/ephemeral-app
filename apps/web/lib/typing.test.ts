@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   actionToClientMessage,
+  compositionToActions,
   inputEventToAction,
   isKeyboardCharacter,
   sanitizeKeyboardText,
@@ -61,6 +62,39 @@ describe("inputEventToAction", () => {
     expect(inputEventToAction(event("insertText", null))).toBeNull();
     expect(inputEventToAction(event("insertText", "ü"))).toBeNull();
     expect(inputEventToAction(event("insertFromPaste", "xy"))).toBeNull();
+  });
+});
+
+describe("compositionToActions", () => {
+  it("adds only the characters a composition update appends", () => {
+    expect(compositionToActions("", "h")).toEqual([
+      { kind: "char", char: "h" },
+    ]);
+    expect(compositionToActions("h", "hel")).toEqual([
+      { kind: "char", char: "e" },
+      { kind: "char", char: "l" },
+    ]);
+  });
+
+  it("does nothing when the composition is committed unchanged", () => {
+    expect(compositionToActions("hel", "hel")).toEqual([]);
+  });
+
+  it("deletes characters the composition dropped", () => {
+    expect(compositionToActions("hel", "he")).toEqual([{ kind: "back" }]);
+    expect(compositionToActions("ka", "")).toEqual([
+      { kind: "back" },
+      { kind: "back" },
+    ]);
+  });
+
+  it("replaces the changed tail, as autocorrect does", () => {
+    expect(compositionToActions("teh", "the")).toEqual([
+      { kind: "back" },
+      { kind: "back" },
+      { kind: "char", char: "h" },
+      { kind: "char", char: "e" },
+    ]);
   });
 });
 

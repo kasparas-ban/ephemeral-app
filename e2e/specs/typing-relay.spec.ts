@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import {
   closeUser,
   expectCompositionText,
@@ -140,3 +140,69 @@ test("remote spaces do not shift the local user's visible characters", async ({
   await closeUser(second);
   await closeUser(first);
 });
+
+test.describe("IME composition", () => {
+  test.skip(
+    ({ browserName }) => browserName !== "chromium",
+    "IME input is driven through the Chrome DevTools Protocol",
+  );
+
+  // Each test ends with a typed "!" so the assertions wait for every earlier
+  // message instead of passing on a transient state.
+  test("a committed composition is typed once", async ({ browser }) => {
+    const { first, second } = await openTwoUsers(browser);
+
+    await compose(first.page, ["a"], "a");
+    await localInput(first.page).press("!");
+
+    await expect(localText(first.page)).toHaveText("a!");
+    await expectCompositionText(second.page, "a!");
+
+    await closeUser(second);
+    await closeUser(first);
+  });
+
+  test("composition updates relay letter by letter, including deletions", async ({
+    browser,
+  }) => {
+    const { first, second } = await openTwoUsers(browser);
+
+    await compose(first.page, ["h", "he", "hel", "he", "hey"], "hey");
+    await localInput(first.page).press("!");
+
+    await expect(localText(first.page)).toHaveText("hey!");
+    await expectCompositionText(second.page, "hey!");
+
+    await closeUser(second);
+    await closeUser(first);
+  });
+
+  test("text converted to non-ASCII is removed and typing continues", async ({
+    browser,
+  }) => {
+    const { first, second } = await openTwoUsers(browser);
+
+    await compose(first.page, ["k", "ka", "か"], "か");
+    await localInput(first.page).pressSequentially("ok!");
+
+    await expect(localText(first.page)).toHaveText("ok!");
+    await expectCompositionText(second.page, "ok!");
+
+    await closeUser(second);
+    await closeUser(first);
+  });
+});
+
+async function compose(page: Page, updates: string[], commit: string) {
+  await localInput(page).focus();
+  const cdp = await page.context().newCDPSession(page);
+
+  for (const text of updates) {
+    await cdp.send("Input.imeSetComposition", {
+      text,
+      selectionStart: text.length,
+      selectionEnd: text.length,
+    });
+  }
+  await cdp.send("Input.insertText", { text: commit });
+}

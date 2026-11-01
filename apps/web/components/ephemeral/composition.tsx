@@ -1,6 +1,6 @@
 "use client";
 
-import type { KeyboardEvent, Ref, SyntheticEvent } from "react";
+import type { CompositionEvent, FormEvent, KeyboardEvent, Ref } from "react";
 import { useCallback, useEffect, useImperativeHandle, useRef } from "react";
 
 import { PrimitiveAtom, useSetAtom } from "jotai";
@@ -29,7 +29,8 @@ export type CompositionProps = {
   autoFocus?: boolean;
   keepFocus?: boolean;
   onBeforeInput?: (e: InputEvent) => void;
-  onInput?: (e: SyntheticEvent<HTMLDivElement>) => void;
+  onCompositionUpdate?: (text: string) => void;
+  onCompositionEnd?: (text: string) => void;
   onKeyDown?: (e: KeyboardEvent<HTMLDivElement>) => void;
   testId?: string;
   textClassName?: string;
@@ -43,7 +44,8 @@ export default function Composition({
   autoFocus = editable,
   keepFocus = editable,
   onBeforeInput,
-  onInput,
+  onCompositionUpdate,
+  onCompositionEnd,
   onKeyDown,
   testId,
   textClassName,
@@ -130,6 +132,18 @@ export default function Composition({
     };
   }, []);
 
+  // Composition text can't be prevented, so clear it once it has been read;
+  // leftover text would let the keyboard re-compose earlier words.
+  const clearEditable = (e: FormEvent<HTMLDivElement>) => {
+    if ((e.nativeEvent as InputEvent).isComposing) return;
+    e.currentTarget.textContent = "";
+  };
+
+  const handleCompositionEnd = (e: CompositionEvent<HTMLDivElement>) => {
+    onCompositionEnd?.(e.data);
+    e.currentTarget.textContent = "";
+  };
+
   // Required to make char deletion work on mobile
   useEffect(() => {
     const editableEl = editableRef.current;
@@ -181,8 +195,11 @@ export default function Composition({
         inputMode="text"
         spellCheck={false}
         onBlur={editable && keepFocus ? focusEditable : undefined}
-        onInput={editable ? onInput : undefined}
-        onCompositionEnd={editable ? onInput : undefined}
+        onInput={editable ? clearEditable : undefined}
+        onCompositionUpdate={
+          editable ? (e) => onCompositionUpdate?.(e.data) : undefined
+        }
+        onCompositionEnd={editable ? handleCompositionEnd : undefined}
         onKeyDown={editable ? onKeyDown : undefined}
         className="relative h-full w-0 overflow-hidden text-transparent caret-transparent outline-none selection:bg-transparent"
       />

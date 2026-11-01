@@ -1,12 +1,17 @@
 "use client";
 
-import type { KeyboardEvent, SyntheticEvent } from "react";
+import type { KeyboardEvent } from "react";
 import { useEffect, useRef } from "react";
 
 import { atom, useAtomValue } from "jotai";
 
 import type { TypingAction } from "@/lib/types";
-import { actionToClientMessage, inputEventToAction } from "@/lib/typing";
+import {
+  actionToClientMessage,
+  compositionToActions,
+  inputEventToAction,
+  sanitizeKeyboardText,
+} from "@/lib/typing";
 import { wsClientAtom } from "@/stores/stores";
 import { hasOnScreenKeyboardAtom, isKeyboardOpenAtom } from "@/stores/viewport";
 
@@ -19,6 +24,7 @@ const localText = atom("");
 export default function LocalEphemeral() {
   const compositionRef = useRef<CompositionHandle>(null);
   const lastAcceptedActionRef = useRef<TypingAction | null>(null);
+  const appliedCompositionRef = useRef("");
   const hasOnScreenKeyboard = useAtomValue(hasOnScreenKeyboardAtom);
   const isKeyboardOpen = useAtomValue(isKeyboardOpenAtom);
   const wsClient = useAtomValue(wsClientAtom);
@@ -43,13 +49,28 @@ export default function LocalEphemeral() {
     applyAction(action);
   };
 
-  const handleInput = (e: SyntheticEvent<HTMLDivElement>) => {
-    applyInputEvent(e.nativeEvent as InputEvent);
-  };
-
   const handleBeforeInput = (event: InputEvent) => {
+    // IMEs and mobile keyboards compose text; composition events report it.
+    if (event.isComposing || event.inputType.includes("Composition")) return;
+
     if (event.cancelable) event.preventDefault();
     applyInputEvent(event);
+  };
+
+  const handleCompositionUpdate = (text: string) => {
+    const keyboardText = sanitizeKeyboardText(text);
+    for (const action of compositionToActions(
+      appliedCompositionRef.current,
+      keyboardText,
+    )) {
+      applyAction(action);
+    }
+    appliedCompositionRef.current = keyboardText;
+  };
+
+  const handleCompositionEnd = (text: string) => {
+    handleCompositionUpdate(text);
+    appliedCompositionRef.current = "";
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -81,7 +102,8 @@ export default function LocalEphemeral() {
         keepFocus={!hasOnScreenKeyboard}
         testId="local-composition"
         onBeforeInput={handleBeforeInput}
-        onInput={handleInput}
+        onCompositionUpdate={handleCompositionUpdate}
+        onCompositionEnd={handleCompositionEnd}
         onKeyDown={handleKeyDown}
       />
 
