@@ -48,10 +48,6 @@ export default function EphemeralApp() {
           </WorldCanvas>
         </div>
 
-        <AnimatePresence>
-          {isInfoOpen && <InfoOverlay onClose={() => setIsInfoOpen(false)} />}
-        </AnimatePresence>
-
         <AnimatePresence initial={false}>
           {!isInfoOpen && (
             <motion.button
@@ -80,6 +76,10 @@ export default function EphemeralApp() {
           )}
         </AnimatePresence>
       </main>
+
+      <AnimatePresence>
+        {isInfoOpen && <InfoOverlay onClose={() => setIsInfoOpen(false)} />}
+      </AnimatePresence>
     </div>
   );
 }
