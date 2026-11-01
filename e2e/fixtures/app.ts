@@ -37,7 +37,7 @@ export async function openTwoUsers(browser: Browser) {
 export function localInput(page: Page) {
   return page
     .getByTestId("local-composition")
-    .getByRole("textbox", { name: "Invisible input" });
+    .getByRole("textbox", { name: "Type to everyone" });
 }
 
 export function remoteCompositions(page: Page) {

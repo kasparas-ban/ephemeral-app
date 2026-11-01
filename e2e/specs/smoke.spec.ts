@@ -26,6 +26,21 @@ test("home page boots without browser errors", async ({ isMobile, page }) => {
   expect(failedRequests).toEqual([]);
 });
 
+test("screen readers get a named textbox, not spelled-out letters", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  const input = localInput(page);
+  await dispatchBeforeInput(input, "q");
+  await dispatchBeforeInput(input, "z");
+  await expect(localText(page)).toHaveText("qz");
+
+  const tree = await page.locator("main").ariaSnapshot();
+  expect(tree).toContain('textbox "Type to everyone"');
+  expect(tree).not.toMatch(/q|z/);
+});
+
 test("unknown pages route to the home page", async ({ page }) => {
   await page.goto("/this/page/does-not-exist");
 

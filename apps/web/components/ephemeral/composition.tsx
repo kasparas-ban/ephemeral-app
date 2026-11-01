@@ -168,12 +168,15 @@ export default function Composition({
     <div className="relative flex h-lh text-xl" data-testid={testId}>
       <div
         ref={textContainerRef}
+        // Letters are animated one span at a time, which screen readers
+        // would spell out; the textbox carries the accessible name instead.
+        aria-hidden="true"
         data-testid={testId ? `${testId}-text` : "composition-text"}
         className={`pointer-events-none absolute right-[3px] whitespace-nowrap ${textClassName}`}
       />
 
       {/* Custom caret */}
-      <div className="pointer-events-none h-auto">
+      <div aria-hidden="true" className="pointer-events-none h-auto">
         <div
           ref={caretRef}
           className={`h-full w-0.5 ${caretClassName} ${styles.caret}`}
@@ -186,7 +189,7 @@ export default function Composition({
         ref={editableRef}
         contentEditable={editable}
         role={editable ? "textbox" : undefined}
-        aria-label={editable ? "Invisible input" : undefined}
+        aria-label={editable ? "Type to everyone" : undefined}
         autoCapitalize="none"
         autoCorrect="off"
         enterKeyHint="done"
