@@ -11,6 +11,7 @@ import { wsClientAtom } from "@/stores/stores";
 import { hasOnScreenKeyboardAtom, isKeyboardOpenAtom } from "@/stores/viewport";
 
 import Composition, { type CompositionHandle } from "./composition";
+import StartTypingHint from "./start-typing-hint";
 
 // Mirrors the local user's text; write-only today, scoped to this module.
 const localText = atom("");
@@ -85,14 +86,7 @@ export default function LocalEphemeral() {
       />
 
       {showStartTypingButton && (
-        <button
-          type="button"
-          data-testid="local-composition-start-typing"
-          onClick={() => compositionRef.current?.focus()}
-          className="absolute top-[calc(100%+0.75rem)] left-1/2 -translate-x-1/2 rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm font-medium whitespace-nowrap text-neutral-900 shadow-sm transition active:scale-95"
-        >
-          Start typing
-        </button>
+        <StartTypingHint onStart={() => compositionRef.current?.focus()} />
       )}
     </div>
   );
