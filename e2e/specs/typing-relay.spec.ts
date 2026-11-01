@@ -77,6 +77,29 @@ test("backspace and enter relay as delete and clear actions", async ({
   await closeUser(first);
 });
 
+test("typing right after enter starts the next composition", async ({
+  browser,
+}) => {
+  const { first, second } = await openTwoUsers(browser);
+
+  await localInput(first.page).pressSequentially("abc");
+  await expectCompositionText(second.page, "abc");
+
+  // Faster than the old text takes to blur away.
+  await localInput(first.page).press("Enter");
+  await localInput(first.page).pressSequentially("xyz", { delay: 20 });
+
+  await expect(localText(first.page)).toHaveText("xyz");
+  await expectCompositionText(second.page, "xyz");
+
+  await localInput(first.page).press("Backspace");
+  await expect(localText(first.page)).toHaveText("xy");
+  await expectCompositionText(second.page, "xy");
+
+  await closeUser(second);
+  await closeUser(first);
+});
+
 test("beforeinput delete relays as a back action", async ({ browser }) => {
   const { first, second } = await openTwoUsers(browser);
 

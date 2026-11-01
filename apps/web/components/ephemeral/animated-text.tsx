@@ -27,12 +27,16 @@ const DEFAULT_LINE_STEP_Y = 30;
 
 export default class AnimatedText {
   private container: HTMLElement;
+  // Holds the live text. Enter hands it off to fade out and starts a new one,
+  // so typing can continue while the old text blurs away.
+  private root: HTMLElement;
   private options: Required<AnimatedTextOptions>;
   private currentLine = 0;
-  private isFlushing = false;
 
   constructor(container: HTMLElement, options?: AnimatedTextOptions) {
     this.container = container;
+    this.root = this.createRoot();
+    container.replaceChildren(this.root);
     this.options = {
       // Layout/logic defaults
       charWidth: options?.charWidth ?? DEFAULT_CHAR_WIDTH,
@@ -51,7 +55,6 @@ export default class AnimatedText {
   }
 
   async addChar(char: string | null | undefined) {
-    if (this.isFlushing) return null; // ignore input during flush
     if (!char) return null;
 
     const currentLineCharCount = this.getCurrentLineCharCount();
@@ -71,7 +74,7 @@ export default class AnimatedText {
     const isNewWord = isWhitespace || currentLineCharCount === 0;
 
     // Identify if this line already has a wrapper (i.e. we moved back to edit a previous line)
-    const existingLineWrapper = this.container.querySelector(
+    const existingLineWrapper = this.root.querySelector(
       `span[data-type="line"][data-line="${this.currentLine}"]`,
     ) as HTMLElement | null;
 
@@ -84,12 +87,12 @@ export default class AnimatedText {
       if (existingLineWrapper) {
         existingLineWrapper.append(wordEl);
       } else {
-        this.container.append(wordEl);
+        this.root.append(wordEl);
       }
     }
 
     // Get the last word for this line (inside wrapper if present)
-    const lastWord = (existingLineWrapper ?? this.container)
+    const lastWord = (existingLineWrapper ?? this.root)
       .lastElementChild as HTMLElement | null;
     if (!lastWord) return;
 
@@ -108,6 +111,7 @@ export default class AnimatedText {
 
     lastWord.append(charEl);
     this.animateCharAppearance(charEl).finished.then(() => {
+      if (!this.root.contains(charEl)) return;
       this.animateChar(charInnerEl);
       this.startImmediateBlur(charEl, charInnerEl);
     });
@@ -142,7 +146,7 @@ export default class AnimatedText {
 
   private getLineChars(line: number) {
     return Array.from(
-      this.container.querySelectorAll<HTMLElement>(
+      this.root.querySelectorAll<HTMLElement>(
         `${LIVE_CHAR_SELECTOR}[data-char-line="${line}"]`,
       ),
     );
@@ -153,6 +157,7 @@ export default class AnimatedText {
   }
 
   private removeCharElement(charEl: HTMLElement) {
+    const isLive = this.root.contains(charEl);
     const wordEl = charEl.closest<HTMLElement>('span[data-type="word"]');
     const lineEl = charEl.closest<HTMLElement>('span[data-type="line"]');
 
@@ -166,7 +171,7 @@ export default class AnimatedText {
       lineEl.remove();
     }
 
-    if (!this.hasVisibleChars(this.container)) {
+    if (isLive && !this.hasVisibleChars(this.root)) {
       this.currentLine = 0;
     }
   }
@@ -176,9 +181,9 @@ export default class AnimatedText {
     lineEl.className = "block absolute will-change-transform";
     lineEl.setAttribute("data-type", "line");
     lineEl.setAttribute("data-line", this.currentLine.toString());
-    this.container.append(lineEl);
+    this.root.append(lineEl);
 
-    const lineWords = this.container.querySelectorAll(
+    const lineWords = this.root.querySelectorAll(
       `span[data-type="word"][data-line="${this.currentLine}"]`,
     );
     lineWords.forEach((word) => {
@@ -187,7 +192,7 @@ export default class AnimatedText {
   }
 
   shiftAllLines(direction?: "up" | "down") {
-    const lines = this.container.querySelectorAll(`span[data-type="line"]`);
+    const lines = this.root.querySelectorAll(`span[data-type="line"]`);
 
     lines.forEach((line) => {
       const outer = line as HTMLElement;
@@ -198,7 +203,7 @@ export default class AnimatedText {
   }
 
   shiftCurrentLine(direction: "left" | "right") {
-    const lineChars = this.container.querySelectorAll(
+    const lineChars = this.root.querySelectorAll(
       `span[data-char-line="${this.currentLine}"]`,
     );
 
@@ -377,29 +382,23 @@ export default class AnimatedText {
     return Math.random() < len1 / (len1 + len2) ? rand(a1, b1) : rand(a2, b2);
   }
 
-  /** Blur out all characters quickly (used on Enter) then clear state */
-  async blurAll() {
-    if (this.isFlushing) return;
-    this.isFlushing = true;
+  /** Blur out all characters quickly (used on Enter) while new text starts. */
+  blurAll() {
+    const fadingRoot = this.root;
+    this.root = this.createRoot();
+    this.container.append(this.root);
+    this.currentLine = 0;
 
     const chars = Array.from(
-      this.container.querySelectorAll(
-        'span[data-kind="char"], span[data-kind="char-deleting"]',
-      ),
-    ) as HTMLElement[];
-
-    if (!chars.length) {
-      this.isFlushing = false;
-      return;
-    }
+      fadingRoot.querySelectorAll<HTMLElement>(VISIBLE_CHAR_SELECTOR),
+    );
 
     // Animate each inner char to blur & fade quickly (override long blur timers)
-    const animations: Promise<unknown>[] = [];
-    chars.forEach((outer) => {
-      const inner = outer.querySelector(
+    const animations = chars.map((outer) => {
+      const inner = outer.querySelector<HTMLElement>(
         'span[data-kind="inner-char"]',
-      ) as HTMLElement | null;
-      if (!inner) return;
+      );
+      if (!inner) return Promise.resolve();
 
       // Get current computed styles BEFORE cancelling animations
       const cs = getComputedStyle(inner);
@@ -412,7 +411,7 @@ export default class AnimatedText {
       // Cancel any ongoing animations so they stop affecting computed style afterward
       inner.getAnimations().forEach((a) => a.cancel());
 
-      const anim = inner.animate(
+      return inner.animate(
         [
           { filter: `blur(${currentBlur}px)`, opacity: currentOpacity },
           { filter: "blur(10px)", opacity: 0 },
@@ -422,20 +421,15 @@ export default class AnimatedText {
           easing: "ease-in",
           fill: "forwards",
         },
-      );
-      animations.push(anim.finished.then(() => outer.remove()).catch(() => {}));
+      ).finished;
     });
 
-    await Promise.allSettled(animations);
+    void Promise.allSettled(animations).then(() => fadingRoot.remove());
+  }
 
-    // Remove any lingering word / line wrappers
-    const wrappers = this.container.querySelectorAll(
-      'span[data-type="word"], span[data-type="line"]',
-    );
-    wrappers.forEach((el) => el.remove());
-
-    // Reset bookkeeping
-    this.currentLine = 0;
-    this.isFlushing = false;
+  private createRoot() {
+    const root = document.createElement("span");
+    root.className = "contents";
+    return root;
   }
 }
