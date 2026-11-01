@@ -94,7 +94,8 @@ Run app-specific commands with `pnpm --filter web <script>` or
   effects Tailwind cannot express. Use `motion` for animation.
 - Keep the message types in `apps/web/lib/types.ts` and
   `apps/api/realtime/types.go` in sync.
-- Accept only printable ASCII input (see `apps/web/lib/typing.ts`).
+- Accept only printable ASCII input (see `apps/web/lib/typing.ts`). The API
+  enforces the same rule in `apps/api/realtime/client.go`.
 - The React Compiler is enabled; do not add manual memoization without a
   measured reason.
 - Prefer self-documenting code over comments.

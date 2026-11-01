@@ -242,6 +242,60 @@ func TestClient_handleMessage_unknownTypeDoesNotBroadcast(t *testing.T) {
 	}
 }
 
+func TestClient_handleMessage_rejectsMessagesTheWebClientCannotSend(t *testing.T) {
+	invalid := map[string]string{
+		"non-ASCII char":         `{"type":"typing_update","char":"é"}`,
+		"emoji char":             `{"type":"typing_update","char":"🙂"}`,
+		"control char":           `{"type":"typing_update","char":"\n"}`,
+		"DEL char":               `{"type":"typing_update","char":"\u007f"}`,
+		"several chars":          `{"type":"typing_update","char":"ab"}`,
+		"missing char":           `{"type":"typing_update"}`,
+		"non-string char":        `{"type":"typing_update","char":7}`,
+		"char on typing_back":    `{"type":"typing_back","char":"a"}`,
+		"char on typing_clear":   `{"type":"typing_clear","char":"a"}`,
+		"presence from a client": `{"type":"presence","users":[{"id":"fake"}]}`,
+		"missing type":           `{"char":"a"}`,
+	}
+
+	for name, data := range invalid {
+		t.Run(name, func(t *testing.T) {
+			_, sender, receiver := setupHubWithClients(t)
+
+			sender.handleMessage([]byte(data))
+
+			if got := readWithTimeout(receiver.send, 100*time.Millisecond); got != nil {
+				t.Fatalf("expected no broadcast, got %s", string(got))
+			}
+		})
+	}
+}
+
+func TestClient_handleMessage_relaysOnlyKnownFields(t *testing.T) {
+	_, sender, receiver := setupHubWithClients(t)
+
+	sender.handleMessage([]byte(`{"type":"typing_update","char":"~","userId":"spoofed","extra":{"big":"payload"}}`))
+
+	got := readWithTimeout(receiver.send, 200*time.Millisecond)
+	if got == nil {
+		t.Fatalf("expected a broadcast message, got none")
+	}
+
+	var fields map[string]any
+	if err := json.Unmarshal(got, &fields); err != nil {
+		t.Fatalf("unmarshal broadcast: %v", err)
+	}
+
+	want := map[string]any{"type": "typing_update", "char": "~", "userId": sender.userID}
+	if len(fields) != len(want) {
+		t.Fatalf("expected fields %v, got %v", want, fields)
+	}
+	for key, value := range want {
+		if fields[key] != value {
+			t.Fatalf("expected %s=%v, got %v", key, value, fields[key])
+		}
+	}
+}
+
 func TestClient_handleMessage_invalidJSONDoesNotPanicOrBroadcast(t *testing.T) {
 	_, sender, receiver := setupHubWithClients(t)
 

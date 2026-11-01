@@ -1,11 +1,5 @@
 package realtime
 
-var relayableTypes = map[string]bool{
-	"typing_update": true,
-	"typing_clear":  true,
-	"typing_back":   true,
-}
-
 type RelayMessage struct {
 	Type   string `json:"type"`
 	UserID string `json:"userId"`

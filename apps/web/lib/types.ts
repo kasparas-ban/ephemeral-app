@@ -30,8 +30,7 @@ export type ServerMessage =
 // Client -> Server messages (flat, no userId)
 export type ClientTypingUpdate = {
   type: "typing_update";
-  // May be omitted for non-character updates (e.g., delete/enter)
-  char?: string;
+  char: string;
 };
 
 export type ClientTypingClear = {

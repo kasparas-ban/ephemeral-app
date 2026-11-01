@@ -13,7 +13,7 @@ const (
 	writeWait      = 60 * time.Second
 	pongWait       = 90 * time.Second
 	pingPeriod     = 30 * time.Second
-	maxMessageSize = 8192
+	maxMessageSize = 512
 )
 
 type Client struct {
@@ -96,42 +96,25 @@ func (c *Client) WritePump() {
 }
 
 func (c *Client) handleMessage(data []byte) {
-	var envelope map[string]json.RawMessage
-	if err := json.Unmarshal(data, &envelope); err != nil {
-		log.Printf("Error unmarshaling message from %s: %v", c.userID, err)
+	var msg RelayMessage
+	if err := json.Unmarshal(data, &msg); err != nil || !isValidTypingMessage(msg) {
+		log.Printf("Dropped invalid message from %s", c.userID)
 		return
 	}
 
-	msgType := envelopeType(envelope)
-	if !relayableTypes[msgType] {
-		log.Printf("Unknown or non-relayable message type from %s: %q", c.userID, msgType)
-		return
-	}
-
-	c.relay(envelope)
+	msg.UserID = c.userID
+	c.hub.BroadcastMessageExcept(c, msg)
 }
 
-func (c *Client) relay(envelope map[string]json.RawMessage) {
-	userID, err := json.Marshal(c.userID)
-	if err != nil {
-		log.Printf("Error marshaling userId for %s: %v", c.userID, err)
-		return
+// isValidTypingMessage mirrors the web client's rules: a typing update carries
+// exactly one printable ASCII character, and other typing messages carry none.
+func isValidTypingMessage(msg RelayMessage) bool {
+	switch msg.Type {
+	case "typing_update":
+		return len(msg.Char) == 1 && msg.Char[0] >= 0x20 && msg.Char[0] <= 0x7e
+	case "typing_back", "typing_clear":
+		return msg.Char == ""
+	default:
+		return false
 	}
-
-	envelope["userId"] = userID
-	c.hub.BroadcastMessageExcept(c, envelope)
-}
-
-func envelopeType(envelope map[string]json.RawMessage) string {
-	raw, ok := envelope["type"]
-	if !ok {
-		return ""
-	}
-
-	var t string
-	if err := json.Unmarshal(raw, &t); err != nil {
-		return ""
-	}
-
-	return t
 }
