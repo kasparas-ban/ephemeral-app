@@ -3,7 +3,7 @@
 import type { KeyboardEvent } from "react";
 import { useEffect, useRef } from "react";
 
-import { atom, useAtomValue } from "jotai";
+import { useAtomValue } from "jotai";
 
 import type { TypingAction } from "@/lib/types";
 import {
@@ -17,9 +17,6 @@ import { hasOnScreenKeyboardAtom, isKeyboardOpenAtom } from "@/stores/viewport";
 
 import Composition, { type CompositionHandle } from "./composition";
 import StartTypingHint from "./start-typing-hint";
-
-// Mirrors the local user's text; write-only today, scoped to this module.
-const localText = atom("");
 
 export default function LocalEphemeral() {
   const compositionRef = useRef<CompositionHandle>(null);
@@ -96,7 +93,6 @@ export default function LocalEphemeral() {
     <div className="relative inline-flex">
       <Composition
         ref={compositionRef}
-        textAtom={localText}
         editable
         autoFocus={!hasOnScreenKeyboard}
         keepFocus={!hasOnScreenKeyboard}

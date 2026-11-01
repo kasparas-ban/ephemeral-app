@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 
-import { atom, useAtomValue } from "jotai";
+import { useAtomValue } from "jotai";
 
 import { serverMessageToAction } from "@/lib/typing";
 import { wsClientAtom } from "@/stores/stores";
@@ -14,7 +14,6 @@ import Composition, { CompositionHandle } from "./composition";
  * `userId` into typing actions, replaying them onto a read-only Composition.
  */
 export default function RemoteEphemeral({ userId }: { userId: string }) {
-  const textAtom = useMemo(() => atom(""), []);
   const compositionRef = useRef<CompositionHandle>(null);
   const wsClient = useAtomValue(wsClientAtom);
 
@@ -29,7 +28,6 @@ export default function RemoteEphemeral({ userId }: { userId: string }) {
   return (
     <Composition
       ref={compositionRef}
-      textAtom={textAtom}
       textClassName="text-gray-500"
       caretClassName="bg-gray-400"
       testId="remote-composition"

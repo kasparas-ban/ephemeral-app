@@ -9,8 +9,6 @@ import type {
 } from "react";
 import { useCallback, useEffect, useImperativeHandle, useRef } from "react";
 
-import { PrimitiveAtom, useSetAtom } from "jotai";
-
 import { TypingAction } from "@/lib/types";
 
 import AnimatedText from "./animated-text";
@@ -29,7 +27,6 @@ export type CompositionHandle = {
 
 export type CompositionProps = {
   ref?: Ref<CompositionHandle>;
-  textAtom: PrimitiveAtom<string>;
   editable?: boolean;
   autoFocus?: boolean;
   keepFocus?: boolean;
@@ -44,7 +41,6 @@ export type CompositionProps = {
 
 export default function Composition({
   ref,
-  textAtom,
   editable = false,
   autoFocus = editable,
   keepFocus = editable,
@@ -62,8 +58,6 @@ export default function Composition({
 
   const caretRef = useRef<HTMLDivElement>(null);
   const caretAnimationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const setText = useSetAtom(textAtom);
 
   const showCaretWhileTyping = useCallback(() => {
     if (!caretRef.current) return;
@@ -98,7 +92,6 @@ export default function Composition({
 
         switch (action.kind) {
           case "char":
-            setText((prev) => prev + action.char);
             animator.addChar(action.char);
             break;
           case "back":
@@ -106,7 +99,6 @@ export default function Composition({
             break;
           case "clear":
             animator.blurAll();
-            setText("");
             break;
         }
 
@@ -117,7 +109,7 @@ export default function Composition({
       },
       focus: focusEditable,
     }),
-    [focusEditable, setText, showCaretWhileTyping],
+    [focusEditable, showCaretWhileTyping],
   );
 
   useEffect(() => {

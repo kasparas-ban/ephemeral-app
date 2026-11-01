@@ -4,13 +4,10 @@ export type ConnectionStatus = "connecting" | "open" | "closed";
 
 const CONNECT_PATH = "/connect";
 
-export function getWebSocketUrl() {
-  const configuredWsUrl = process.env.NEXT_PUBLIC_WS_URL;
-  if (configuredWsUrl) return configuredWsUrl;
-
+function getWebSocketUrl() {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
   if (!apiUrl) {
-    throw new Error("NEXT_PUBLIC_API_URL or NEXT_PUBLIC_WS_URL must be set");
+    throw new Error("NEXT_PUBLIC_API_URL must be set");
   }
 
   return webSocketUrlFromApiUrl(apiUrl);

@@ -6,7 +6,6 @@ import { useMemo, useState } from "react";
 import { useAtomValue } from "jotai";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
-import WorldCanvas from "@/components/canvas/WorldCanvas";
 import LocalEphemeral from "@/components/ephemeral/local-ephemeral";
 import RemoteEphemeral from "@/components/ephemeral/remote-ephemeral";
 import useVisibleViewport from "@/hooks/useVisibleViewport";
@@ -43,10 +42,8 @@ export default function EphemeralApp() {
           height: viewportRect.height,
         }}
       >
-        <div className="absolute inset-0">
-          <WorldCanvas>
-            <EphemeralLayer />
-          </WorldCanvas>
+        <div className="absolute inset-0 touch-none">
+          <EphemeralLayer />
         </div>
 
         <AnimatePresence initial={false}>
@@ -89,18 +86,17 @@ function EphemeralLayer() {
   const connectedUsers = useAtomValue(connectedUsersAtom);
   const isKeyboardOpen = useAtomValue(isKeyboardOpenAtom);
   const viewportRect = useAtomValue(visibleViewportRectAtom);
-  const viewportSize = useMemo(() => getRectSize(viewportRect), [viewportRect]);
   const canvasBounds = useMemo(
-    () => createCanvasBounds(viewportSize),
-    [viewportSize],
+    () => createCanvasBounds(viewportRect),
+    [viewportRect],
   );
   const slotSize = useMemo(
-    () => createEphemeralSlotSize(viewportSize),
-    [viewportSize],
+    () => createEphemeralSlotSize(viewportRect),
+    [viewportRect],
   );
   const localRect = useMemo(
-    () => createLocalRect(viewportSize, slotSize, isKeyboardOpen),
-    [isKeyboardOpen, slotSize, viewportSize],
+    () => createLocalRect(viewportRect, slotSize, isKeyboardOpen),
+    [isKeyboardOpen, slotSize, viewportRect],
   );
   const placements = useMemo(
     () =>
@@ -121,9 +117,12 @@ function EphemeralLayer() {
         size={slotSize}
         testId="local-composition-slot"
       >
-        <LocalCompositionAnchor slotWidth={slotSize.width}>
+        <CompositionAnchor
+          slotWidth={slotSize.width}
+          alignBottom={isKeyboardOpen}
+        >
           <LocalEphemeral />
-        </LocalCompositionAnchor>
+        </CompositionAnchor>
       </EphemeralSlot>
 
       {connectedUsers.map((user) => {
@@ -138,17 +137,13 @@ function EphemeralLayer() {
             testId="remote-composition-slot"
           >
             <CompositionAnchor slotWidth={slotSize.width}>
-              <IncomingEphemeralItem userId={user.id} />
+              <RemoteEphemeral userId={user.id} />
             </CompositionAnchor>
           </EphemeralSlot>
         );
       })}
     </>
   );
-}
-
-function IncomingEphemeralItem({ userId }: { userId: string }) {
-  return <RemoteEphemeral userId={userId} />;
 }
 
 function EphemeralSlot({
@@ -177,44 +172,24 @@ function EphemeralSlot({
   );
 }
 
+// Puts the caret at a fixed inset from the slot's right edge; text grows left.
 function CompositionAnchor({
+  alignBottom = false,
   children,
   slotWidth,
 }: {
+  alignBottom?: boolean;
   children: ReactNode;
   slotWidth: number;
 }) {
-  return (
-    <div
-      className="pointer-events-auto absolute top-1/2 -translate-y-1/2"
-      style={{
-        left: slotWidth - EPHEMERAL_CARET_INSET_RIGHT,
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-function LocalCompositionAnchor({
-  children,
-  slotWidth,
-}: {
-  children: ReactNode;
-  slotWidth: number;
-}) {
-  const isKeyboardOpen = useAtomValue(isKeyboardOpenAtom);
-
   return (
     <div
       className={
-        isKeyboardOpen
+        alignBottom
           ? "pointer-events-auto absolute bottom-0 flex"
           : "pointer-events-auto absolute top-1/2 -translate-y-1/2"
       }
-      style={{
-        left: slotWidth - EPHEMERAL_CARET_INSET_RIGHT,
-      }}
+      style={{ left: slotWidth - EPHEMERAL_CARET_INSET_RIGHT }}
     >
       {children}
     </div>
@@ -269,13 +244,6 @@ function createLocalRect(
       Math.max(CANVAS_PADDING, size.height - slotSize.height - bottomInset),
     ),
     ...slotSize,
-  };
-}
-
-function getRectSize(rect: Rect): Size {
-  return {
-    width: rect.width,
-    height: rect.height,
   };
 }
 
