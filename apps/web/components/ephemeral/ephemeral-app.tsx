@@ -48,10 +48,6 @@ export default function EphemeralApp() {
           </WorldCanvas>
         </div>
 
-        <AnimatePresence>
-          {isInfoOpen && <InfoOverlay onClose={() => setIsInfoOpen(false)} />}
-        </AnimatePresence>
-
         <AnimatePresence initial={false}>
           {!isInfoOpen && (
             <motion.button
@@ -80,6 +76,11 @@ export default function EphemeralApp() {
           )}
         </AnimatePresence>
       </main>
+
+      {/* Outside <main>: it tracks the keyboard, the overlay must not. */}
+      <AnimatePresence>
+        {isInfoOpen && <InfoOverlay onClose={() => setIsInfoOpen(false)} />}
+      </AnimatePresence>
     </div>
   );
 }

@@ -2,6 +2,8 @@
 
 import { motion, type Transition, useReducedMotion } from "motion/react";
 
+import useKeyboardStableHeight from "@/hooks/useKeyboardStableHeight";
+
 import DepthTitle from "./depth-title";
 import StrangerPhrases from "./stranger-phrases";
 
@@ -9,6 +11,7 @@ const EASE_OUT = [0.22, 1, 0.36, 1] as const;
 
 export default function InfoOverlay({ onClose }: { onClose: () => void }) {
   const reduceMotion = useReducedMotion();
+  const contentHeight = useKeyboardStableHeight();
   const instant = (transition: Transition) =>
     reduceMotion ? { duration: 0 } : transition;
   const stagger = (delay: number, duration = 0.6) =>
@@ -19,7 +22,7 @@ export default function InfoOverlay({ onClose }: { onClose: () => void }) {
       role="dialog"
       aria-modal="true"
       aria-labelledby="app-info-title"
-      className="absolute inset-0 z-30 grid place-items-center overflow-hidden px-6 text-neutral-950"
+      className="fixed inset-0 z-30 overflow-hidden text-neutral-950"
       initial={{
         backgroundColor: "rgba(255, 255, 255, 0)",
         backdropFilter: "blur(0px)",
@@ -35,7 +38,8 @@ export default function InfoOverlay({ onClose }: { onClose: () => void }) {
       transition={instant({ duration: 0.2, ease: "easeOut" })}
     >
       <motion.div
-        className="absolute inset-0 grid place-items-center px-6"
+        className="absolute inset-x-0 top-0 grid place-items-center px-6"
+        style={{ height: contentHeight }}
         exit={{
           filter: "blur(5px)",
           opacity: 0,
