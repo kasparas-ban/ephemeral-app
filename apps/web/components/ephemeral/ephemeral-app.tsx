@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { useAtomValue } from "jotai";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -9,8 +9,8 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import LocalEphemeral from "@/components/ephemeral/local-ephemeral";
 import RemoteEphemeral from "@/components/ephemeral/remote-ephemeral";
 import useVisibleViewport from "@/hooks/useVisibleViewport";
-import type { Point, Rect, Size } from "@/lib/spatial";
-import { spatial } from "@/lib/spatial";
+import type { Placements, Point, Rect, Size } from "@/lib/spatial";
+import { layoutUsers } from "@/lib/spatial";
 import { connectedUsersAtom } from "@/stores/stores";
 import { isKeyboardOpenAtom, visibleViewportRectAtom } from "@/stores/viewport";
 
@@ -86,29 +86,22 @@ function EphemeralLayer() {
   const connectedUsers = useAtomValue(connectedUsersAtom);
   const isKeyboardOpen = useAtomValue(isKeyboardOpenAtom);
   const viewportRect = useAtomValue(visibleViewportRectAtom);
-  const canvasBounds = useMemo(
-    () => createCanvasBounds(viewportRect),
-    [viewportRect],
+  const slotSize = createEphemeralSlotSize(viewportRect);
+  const localRect = createLocalRect(viewportRect, slotSize, isKeyboardOpen);
+
+  // Remember the last layout so Visitors keep their spot as others come and go.
+  const [previousPlacements, setPreviousPlacements] = useState<Placements>(
+    () => new Map(),
   );
-  const slotSize = useMemo(
-    () => createEphemeralSlotSize(viewportRect),
-    [viewportRect],
-  );
-  const localRect = useMemo(
-    () => createLocalRect(viewportRect, slotSize, isKeyboardOpen),
-    [isKeyboardOpen, slotSize, viewportRect],
-  );
-  const placements = useMemo(
-    () =>
-      spatial.layoutUsers({
-        userIds: connectedUsers.map((user) => user.id),
-        bounds: canvasBounds,
-        itemSize: slotSize,
-        reservedRects: [localRect],
-        gap: EPHEMERAL_GAP,
-      }),
-    [canvasBounds, connectedUsers, localRect, slotSize],
-  );
+  const placements = layoutUsers({
+    userIds: connectedUsers.map((user) => user.id),
+    bounds: createCanvasBounds(viewportRect),
+    itemSize: slotSize,
+    reservedRects: [localRect],
+    gap: EPHEMERAL_GAP,
+    previous: previousPlacements,
+  });
+  if (placements !== previousPlacements) setPreviousPlacements(placements);
 
   return (
     <>

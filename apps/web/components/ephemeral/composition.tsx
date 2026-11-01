@@ -7,7 +7,7 @@ import type {
   KeyboardEvent,
   Ref,
 } from "react";
-import { useCallback, useEffect, useImperativeHandle, useRef } from "react";
+import { useEffect, useImperativeHandle, useRef } from "react";
 
 import { TypingAction } from "@/lib/types";
 
@@ -59,29 +59,6 @@ export default function Composition({
   const caretRef = useRef<HTMLDivElement>(null);
   const caretAnimationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const showCaretWhileTyping = useCallback(() => {
-    if (!caretRef.current) return;
-
-    caretRef.current.classList.add(styles.caretTyping);
-
-    if (caretAnimationTimeoutRef.current) {
-      clearTimeout(caretAnimationTimeoutRef.current);
-    }
-
-    caretAnimationTimeoutRef.current = setTimeout(() => {
-      if (!caretRef.current) return;
-      caretRef.current.classList.remove(styles.caretTyping);
-    }, CARET_IDLE_DELAY);
-  }, []);
-
-  const focusEditable = useCallback(() => {
-    const editableEl = editableRef.current;
-    if (!editable || !editableEl) return;
-    if (document.activeElement === editableEl) return;
-
-    editableEl.focus({ preventScroll: true });
-  }, [editable]);
-
   // The single place an action becomes a visible effect.
   useImperativeHandle(
     ref,
@@ -102,19 +79,30 @@ export default function Composition({
             break;
         }
 
-        showCaretWhileTyping();
+        // Hold the caret steady while typing; blinking resumes when idle.
+        const caret = caretRef.current;
+        if (!caret) return;
+        caret.classList.add(styles.caretTyping);
+        if (caretAnimationTimeoutRef.current) {
+          clearTimeout(caretAnimationTimeoutRef.current);
+        }
+        caretAnimationTimeoutRef.current = setTimeout(() => {
+          caret.classList.remove(styles.caretTyping);
+        }, CARET_IDLE_DELAY);
       },
       blur() {
         editableRef.current?.blur();
       },
-      focus: focusEditable,
+      focus() {
+        if (editable) focusWithoutScrolling(editableRef.current);
+      },
     }),
-    [focusEditable, showCaretWhileTyping],
+    [editable],
   );
 
   useEffect(() => {
-    if (autoFocus) focusEditable();
-  }, [autoFocus, focusEditable]);
+    if (autoFocus && editable) focusWithoutScrolling(editableRef.current);
+  }, [autoFocus, editable]);
 
   // Typing with nothing focused, e.g. after clicking empty space or closing
   // the info screen, goes to the Composition.
@@ -122,16 +110,18 @@ export default function Composition({
     if (!editable || !keepFocus) return;
 
     const handleKeyDown = () => {
-      if (document.activeElement === document.body) focusEditable();
+      if (document.activeElement === document.body) {
+        focusWithoutScrolling(editableRef.current);
+      }
     };
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [editable, keepFocus, focusEditable]);
+  }, [editable, keepFocus]);
 
   // Keep focus unless it moved to another control, so Tab still works.
   const handleBlur = (e: FocusEvent<HTMLDivElement>) => {
-    if (!e.relatedTarget) focusEditable();
+    if (!e.relatedTarget) focusWithoutScrolling(e.currentTarget);
   };
 
   useEffect(() => {
@@ -213,4 +203,9 @@ export default function Composition({
       />
     </div>
   );
+}
+
+function focusWithoutScrolling(element: HTMLElement | null) {
+  if (!element || document.activeElement === element) return;
+  element.focus({ preventScroll: true });
 }

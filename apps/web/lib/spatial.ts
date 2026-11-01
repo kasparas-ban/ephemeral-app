@@ -2,15 +2,7 @@ export type Point = { x: number; y: number };
 export type Size = { width: number; height: number };
 export type Rect = Point & Size;
 
-export type SpatialOptions = {
-  /** Stable seed for the session. Same seed + id ⇒ same point. */
-  seed?: number;
-  /** Placement area in canvas px; points fall within the padded interior. */
-  width?: number;
-  height?: number;
-  /** Inset kept clear of the edges so notes don't hug the border. */
-  padding?: number;
-};
+export type Placements = Map<string, Point>;
 
 export type LayoutUsersOptions = {
   userIds: string[];
@@ -18,130 +10,61 @@ export type LayoutUsersOptions = {
   itemSize: Size;
   reservedRects?: Rect[];
   gap?: number;
+  /** The last layout; users keep their spot while it still fits. */
+  previous?: Placements;
+  /** Same seed + id ⇒ same preferred spots. Defaults to one seed per session. */
+  seed?: number;
 };
 
-const DEFAULT_WIDTH = 1200;
-const DEFAULT_HEIGHT = 720;
-const DEFAULT_PADDING = 80;
 const DEFAULT_GAP = 32;
 const MAX_RANDOM_CANDIDATES = 160;
 const GRID_STEP = 48;
+const SESSION_SEED = crypto.getRandomValues(new Uint32Array(1))[0];
 
-export class SpatialIndex {
-  private readonly seed: number;
-  private readonly width: number;
-  private readonly height: number;
-  private readonly padding: number;
-  private readonly positions = new Map<string, Point>();
+/**
+ * Places each user in an open spot inside `bounds`. Returns `previous` itself
+ * when nothing moved, so callers can tell a new layout apart by reference.
+ */
+export function layoutUsers({
+  userIds,
+  bounds,
+  itemSize,
+  reservedRects = [],
+  gap = DEFAULT_GAP,
+  previous = new Map(),
+  seed = SESSION_SEED,
+}: LayoutUsersOptions): Placements {
+  const placements: Placements = new Map();
+  const occupiedRects = [...reservedRects];
 
-  constructor(options: SpatialOptions = {}) {
-    this.seed = options.seed ?? randomSeed();
-    this.width = options.width ?? DEFAULT_WIDTH;
-    this.height = options.height ?? DEFAULT_HEIGHT;
-    this.padding = options.padding ?? DEFAULT_PADDING;
-  }
+  // Users who already have a spot claim it before newcomers look for one.
+  const sortedIds = [...new Set(userIds)].sort();
+  const placementOrder = [
+    ...sortedIds.filter((userId) => previous.has(userId)),
+    ...sortedIds.filter((userId) => !previous.has(userId)),
+  ];
 
-  getOrAssignPosition(userId: string): Point {
-    const existing = this.positions.get(userId);
-    if (existing) return existing;
-
-    const rand = mulberry32(hashString(`${this.seed}:${userId}`));
-    const usableW = Math.max(0, this.width - this.padding * 2);
-    const usableH = Math.max(0, this.height - this.padding * 2);
-    const point: Point = {
-      x: this.padding + rand() * usableW,
-      y: this.padding + rand() * usableH,
-    };
-
-    this.positions.set(userId, point);
-    return point;
-  }
-
-  layoutUsers({
-    userIds,
-    bounds,
-    itemSize,
-    reservedRects = [],
-    gap = DEFAULT_GAP,
-  }: LayoutUsersOptions): Map<string, Point> {
-    const activeUserIds = new Set(userIds);
-    for (const userId of this.positions.keys()) {
-      if (!activeUserIds.has(userId)) this.release(userId);
-    }
-
-    const placements = new Map<string, Point>();
-    const occupiedRects = [...reservedRects];
-    const uniqueUserIds = [...new Set(userIds)].sort();
-
-    for (const userId of uniqueUserIds) {
-      const existing = this.positions.get(userId);
-      if (existing) {
-        const existingRect = rectFromPoint(existing, itemSize);
-        if (
-          fits(existingRect, bounds) &&
-          !overlapsAny(existingRect, occupiedRects, gap)
-        ) {
-          placements.set(userId, existing);
-          occupiedRects.push(existingRect);
-          continue;
-        }
-      }
-
-      const point = this.findOpenPoint(
-        userId,
+  for (const userId of placementOrder) {
+    let point = previous.get(userId);
+    if (
+      !point ||
+      !isOpen(rectFromPoint(point, itemSize), bounds, occupiedRects, gap)
+    ) {
+      point = findOpenPoint(
+        `${seed}:${userId}`,
         bounds,
         itemSize,
         occupiedRects,
         gap,
       );
-      this.positions.set(userId, point);
-      placements.set(userId, point);
-      occupiedRects.push(rectFromPoint(point, itemSize));
     }
 
-    return placements;
+    placements.set(userId, point);
+    occupiedRects.push(rectFromPoint(point, itemSize));
   }
 
-  release(userId: string): void {
-    this.positions.delete(userId);
-  }
-
-  private findOpenPoint(
-    userId: string,
-    bounds: Rect,
-    itemSize: Size,
-    occupiedRects: Rect[],
-    gap: number,
-  ): Point {
-    const candidates = [
-      ...randomCandidates(`${this.seed}:${userId}:layout`, bounds, itemSize),
-      ...gridCandidates(`${this.seed}:${userId}:grid`, bounds, itemSize),
-    ];
-
-    const openCandidate = mostCentralOpenCandidate(
-      candidates,
-      occupiedRects,
-      itemSize,
-      bounds,
-      gap,
-    );
-    if (openCandidate) return openCandidate;
-
-    return leastOverlappingCandidate(
-      candidates,
-      occupiedRects,
-      itemSize,
-      bounds,
-      gap,
-    );
-  }
+  return samePlacements(placements, previous) ? previous : placements;
 }
-
-export function createSpatialIndex(options?: SpatialOptions): SpatialIndex {
-  return new SpatialIndex(options);
-}
-
-export const spatial = createSpatialIndex();
 
 // --- internals -------------------------------------------------------------
 
@@ -168,13 +91,41 @@ function mulberry32(seed: number): () => number {
   };
 }
 
-/** A fresh per-session seed. Prefers `crypto`; falls back where it's absent. */
-function randomSeed(): number {
-  const c = globalThis.crypto;
-  if (c?.getRandomValues) {
-    return c.getRandomValues(new Uint32Array(1))[0] >>> 0;
+function findOpenPoint(
+  seedInput: string,
+  bounds: Rect,
+  itemSize: Size,
+  occupiedRects: Rect[],
+  gap: number,
+): Point {
+  const candidates = [
+    ...randomCandidates(`${seedInput}:layout`, bounds, itemSize),
+    ...gridCandidates(`${seedInput}:grid`, bounds, itemSize),
+  ];
+
+  return (
+    mostCentralOpenCandidate(
+      candidates,
+      occupiedRects,
+      itemSize,
+      bounds,
+      gap,
+    ) ??
+    leastOverlappingCandidate(candidates, occupiedRects, itemSize, bounds, gap)
+  );
+}
+
+function isOpen(rect: Rect, bounds: Rect, occupiedRects: Rect[], gap: number) {
+  return fits(rect, bounds) && !overlapsAny(rect, occupiedRects, gap);
+}
+
+function samePlacements(a: Placements, b: Placements) {
+  if (a.size !== b.size) return false;
+  for (const [userId, point] of a) {
+    const other = b.get(userId);
+    if (other?.x !== point.x || other?.y !== point.y) return false;
   }
-  return Math.floor(Math.random() * 0xffffffff) >>> 0;
+  return true;
 }
 
 function rectFromPoint(point: Point, size: Size): Rect {

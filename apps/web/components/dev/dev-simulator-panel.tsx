@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useAtomValue } from "jotai";
 import { Gauge, MessageSquare, Pause, Play, Users } from "lucide-react";
@@ -29,15 +29,6 @@ export default function DevSimulatorPanel() {
   const [bots, setBots] = useState<DevBotSnapshot[]>([]);
   const controllerRef = useRef<DevBotController | null>(null);
 
-  const options = useMemo(
-    () => ({
-      count: botCount,
-      cadenceMs,
-      phrases: normalizeDevBotPhrases(phrasesText),
-    }),
-    [botCount, cadenceMs, phrasesText],
-  );
-
   useEffect(() => {
     const controller = new DevBotController(setBots);
     controllerRef.current = controller;
@@ -50,12 +41,14 @@ export default function DevSimulatorPanel() {
 
   useEffect(() => {
     if (!running) return;
-    controllerRef.current?.updateOptions(options);
-  }, [options, running]);
+    controllerRef.current?.updateOptions(
+      botOptions(botCount, cadenceMs, phrasesText),
+    );
+  }, [botCount, cadenceMs, phrasesText, running]);
 
   useEffect(() => {
     if (!running) return;
-    controllerRef.current?.start(options);
+    controllerRef.current?.start(botOptions(botCount, cadenceMs, phrasesText));
     // Restart only when the bot count changes; other option changes are
     // applied in place by the updateOptions effect above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -198,4 +191,8 @@ export default function DevSimulatorPanel() {
       </div>
     </section>
   );
+}
+
+function botOptions(count: number, cadenceMs: number, phrasesText: string) {
+  return { count, cadenceMs, phrases: normalizeDevBotPhrases(phrasesText) };
 }
