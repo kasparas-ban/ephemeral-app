@@ -112,7 +112,7 @@ export default class AnimatedText {
     lastWord.append(charEl);
     this.animateCharAppearance(charEl).finished.then(() => {
       if (!this.root.contains(charEl)) return;
-      this.animateChar(charInnerEl);
+      if (!prefersReducedMotion()) this.animateChar(charInnerEl);
       this.startImmediateBlur(charEl, charInnerEl);
     });
   }
@@ -226,7 +226,7 @@ export default class AnimatedText {
         { transform: `translateX(${toX}px)` },
       ],
       {
-        duration: this.options.charShiftDuration,
+        duration: movementDuration(this.options.charShiftDuration),
         easing: CHAR_SHIFT_EASING,
         fill: "forwards",
       },
@@ -244,7 +244,7 @@ export default class AnimatedText {
         { transform: `translateY(${toY}px)` },
       ],
       {
-        duration: this.options.lineMoveDuration,
+        duration: movementDuration(this.options.lineMoveDuration),
         easing: LINE_MOVE_EASING,
         fill: "forwards",
       },
@@ -260,7 +260,7 @@ export default class AnimatedText {
         { opacity: 1, transform: `translateX(-${this.options.charWidth}px)` },
       ],
       {
-        duration: this.options.charIntroDuration,
+        duration: movementDuration(this.options.charIntroDuration),
         easing: CHAR_INTRO_EASING,
         fill: "forwards",
       },
@@ -432,4 +432,13 @@ export default class AnimatedText {
     root.className = "contents";
     return root;
   }
+}
+
+// Text still blurs and fades away, but doesn't slide or float.
+function prefersReducedMotion() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function movementDuration(duration: number) {
+  return prefersReducedMotion() ? 0 : duration;
 }

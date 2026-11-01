@@ -204,6 +204,41 @@ test("expired local text does not force the next space onto a new line", async (
   await expect(chars).toHaveCount(3);
 });
 
+test.describe("with reduced motion", () => {
+  test.use({ contextOptions: { reducedMotion: "reduce" } });
+
+  test("typed text fades without moving", async ({ page }) => {
+    await page.goto("/");
+
+    const input = localInput(page);
+    await dispatchBeforeInput(input, "h");
+    await dispatchBeforeInput(input, "i");
+    await expect(localText(page)).toHaveText("hi");
+    // Movement would start right after the characters appear.
+    await page.waitForTimeout(300);
+
+    const animations = await page.evaluate(() =>
+      document.getAnimations().map((animation) => {
+        const effect = animation.effect as KeyframeEffect;
+        const keyframes = effect.getKeyframes();
+        return {
+          moves:
+            Number(effect.getTiming().duration) > 0 &&
+            keyframes.some((frame) => frame.transform !== undefined),
+          blurs: keyframes.some((frame) =>
+            String(frame.filter).includes("blur"),
+          ),
+          infinite: effect.getTiming().iterations === Infinity,
+        };
+      }),
+    );
+
+    expect(animations.filter((a) => a.moves)).toEqual([]);
+    expect(animations.filter((a) => a.infinite)).toEqual([]);
+    expect(animations.some((a) => a.blurs)).toBe(true);
+  });
+});
+
 test("api health endpoint is reachable from the E2E environment", async ({
   request,
 }) => {
