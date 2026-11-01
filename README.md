@@ -1,164 +1,72 @@
-## Monorepo Overview
+# Ephemeral
 
-Turborepo monorepo with a Next.js app and a Go API.
+Ephemeral is a shared page where strangers type to each other in real time.
+Each keystroke appears on other screens as it is typed, then blurs away. Press
+Enter and your words are gone. There is no history and no account, and nothing
+is saved.
 
-```
-apps/
-  web/        # Next.js application
-  api/        # Go (net/http) API on :8080
+[How it works](#how-it-works) · [Development](#development) ·
+[Configuration](#configuration)
 
-pnpm-workspace.yaml    # workspace packages
-turbo.json             # Turborepo tasks
-tsconfig.base.json     # shared TS config
-```
+## How it works
 
-## Prerequisites
+- **Type, and others watch it appear.** Every character goes to everyone who is
+  connected, letter by letter, as you write it.
+- **Let it go.** Backspace removes a character for everyone. Enter clears your
+  words, and they blur out on every screen.
+- **See who is here.** Other visitors appear as their own lines of text, and
+  disappear when they leave.
+- **Keyboard characters only.** Input is limited to printable ASCII, so there
+  are no emojis or pasted symbols.
 
-- Node.js and PNPM (workspace uses PNPM)
-- Go 1.25+
+## Status
 
-Go dev tools (Air for hot reload, staticcheck) are pinned in
-`apps/api/go.mod` via `tool` directives and run with `go tool`, so there is
-nothing extra to install.
-
-## Install
-
-```bash
-pnpm install
-```
+Ephemeral is a **work-in-progress prototype**. The web app runs on desktop and
+mobile browsers. Messages travel between the browser and a small relay server,
+which forwards them and keeps nothing.
 
 ## Development
 
-- Run all apps (web + api):
+The repository is a Turborepo monorepo:
 
-```bash
+| Path       | Purpose                                         |
+| ---------- | ----------------------------------------------- |
+| `apps/web` | Next.js app (http://localhost:3000)             |
+| `apps/api` | Go `net/http` WebSocket relay (localhost:8080)  |
+| `e2e`      | Playwright tests against the real web app + API |
+
+You need Node.js with pnpm, and Go 1.25 or later. The Go dev tools (Air,
+staticcheck) are pinned in `apps/api/go.mod` and run with `go tool`, so there
+is nothing else to install.
+
+```sh
+pnpm install
 pnpm dev
 ```
 
-- Run only one app:
+| Command                 | Purpose                                                |
+| ----------------------- | ------------------------------------------------------ |
+| `pnpm dev`              | Run the web app and API with hot reload.               |
+| `pnpm --filter web dev` | Run only the web app (or `--filter api` for the API).  |
+| `pnpm check`            | Check formatting, lint, types, and run unit tests.     |
+| `pnpm verify`           | Run `check` plus Chromium end-to-end tests.            |
+| `pnpm test:e2e`         | Run end-to-end tests in Chromium, Firefox, and WebKit. |
+| `pnpm format`           | Format with Prettier and gofmt.                        |
+| `pnpm build`            | Build both apps.                                       |
 
-```bash
-pnpm --filter web dev   # Next.js (http://localhost:3000)
-pnpm --filter api dev   # Go API with air (http://localhost:8080)
-```
+Run `pnpm verify` before calling work done. End-to-end tests need browsers:
+`pnpm exec playwright install chromium firefox webkit`. Set
+`E2E_WEB_SERVER_LOGS=1` to see server logs while debugging them.
 
-The web app consumes the API via `NEXT_PUBLIC_API_URL`. Environment-specific
-defaults live in `apps/web/.env.development` and `apps/web/.env.production`.
+## Configuration
 
-Development:
+The web app finds the API through `NEXT_PUBLIC_API_URL`. Defaults live in
+`apps/web/.env.development` and `apps/web/.env.production`.
 
-```bash
-NEXT_PUBLIC_API_URL=http://localhost:8080
-```
+The API only accepts WebSocket connections from allowed browser origins. In
+production, set `ALLOWED_ORIGINS` to the web app's origins, comma separated.
+Each value must match `window.location.origin` of the deployed web app:
 
-Production:
-
-```bash
-NEXT_PUBLIC_API_URL=https://ephemeral-app-api.vercel.app
-```
-
-The Go API also checks the browser `Origin` header before accepting WebSocket
-upgrades. In production, set `ALLOWED_ORIGINS` on the API deployment to the
-exact web app origins that should be allowed, comma separated:
-
-```bash
+```sh
 ALLOWED_ORIGINS=https://your-web-app.vercel.app,https://www.example.com
 ```
-
-Do not set this to the API origin unless the browser page is also served from
-that origin. The value should match `window.location.origin` for the deployed
-web app.
-
-## Build
-
-- Build everything via Turborepo:
-
-```bash
-pnpm build
-```
-
-- Build individually:
-
-```bash
-pnpm -C apps/web build
-pnpm -C apps/api build
-```
-
-## Run (Production)
-
-```bash
-# after pnpm build
-pnpm -C apps/web start          # Next.js
-pnpm -C apps/api start          # Go binary (built at apps/api/bin/api)
-```
-
-## Checks
-
-```bash
-pnpm check              # format check + lint + typecheck + unit tests (seconds)
-pnpm verify             # check + Chromium-only E2E; run before calling work done
-```
-
-Individual pieces:
-
-```bash
-pnpm format             # Prettier + gofmt (write)
-pnpm format:check       # Prettier + gofmt (check only)
-pnpm lint               # ESLint (zero warnings) + go vet + staticcheck
-pnpm typecheck          # tsc --noEmit + go build
-pnpm test               # Vitest (apps/web) + go test (apps/api)
-pnpm -C apps/web test:watch
-pnpm clean              # turbo clean
-```
-
-Web unit tests live next to the code as `*.test.ts(x)` and run with Vitest.
-
-## End-to-End Tests
-
-The E2E suite uses Playwright and starts the real Go API plus a production
-Next.js server on test-only ports.
-
-```bash
-pnpm exec playwright install chromium firefox webkit
-pnpm test:e2e          # Chromium, Firefox, WebKit, and mobile Chrome
-pnpm test:e2e:fast     # Chromium only (used by pnpm verify)
-pnpm test:e2e:ui       # interactive Playwright runner
-pnpm test:e2e:debug    # headed debug mode
-pnpm test:e2e:report   # open the latest HTML report
-```
-
-Playwright ignores server stdout/stderr by default so routine websocket and
-framework logs do not crowd the reporter output. To show those logs while
-debugging, run:
-
-```bash
-E2E_WEB_SERVER_LOGS=1 pnpm test:e2e
-```
-
-Defaults:
-
-```bash
-E2E_WEB_PORT=13000
-E2E_API_PORT=18080
-E2E_HOST=127.0.0.1
-```
-
-## Tasks
-
-[ ] - Graceful shutdown
-[ ] - Structured logging
-[x] - Protobuf implementation
-[ ] - Stress testing
-[x] - Dev tools
-[x] - React Compiler
-[ ] - Setup observability
-[x] - Deploy on Vercel
-[x] - Custom 404 page
-[ ] - Info panel
-[x] - Fix scrolling on desktop with arrow keys
-[ ] - Test on Safari & Firefox
-[ ] - Adapt to mobile
-[ ] - Allow letter symbols only (no emojis)
-[ ] - Limit to 3 connected clients max
-[ ] - Predefine connected client positions
-[ ] - Add an info screen
