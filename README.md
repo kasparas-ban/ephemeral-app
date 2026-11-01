@@ -21,8 +21,8 @@ is saved.
 
 ## Status
 
-Ephemeral is a **work-in-progress prototype**. The web app runs on desktop and
-mobile browsers. Messages travel between the browser and a small relay server,
+Ephemeral is a small side project, hosted on Vercel and publicly available. It
+runs in desktop and mobile browsers. Messages travel between the browser and a small relay server,
 which forwards them and keeps nothing.
 
 ## Development
