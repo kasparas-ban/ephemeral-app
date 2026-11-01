@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
 import { useAtomValue } from "jotai";
-import { Info } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
 import WorldCanvas from "@/components/canvas/WorldCanvas";
@@ -60,7 +59,7 @@ export default function EphemeralApp() {
               aria-label="Show app information"
               aria-expanded={isInfoOpen}
               onClick={() => setIsInfoOpen(true)}
-              className="absolute top-4 right-4 z-40 inline-flex h-10 w-10 items-center justify-center rounded-full border border-neutral-300 bg-white/85 text-neutral-900 shadow-sm backdrop-blur transition-colors hover:bg-white focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2 focus-visible:outline-none"
+              className="group absolute top-4 right-4 z-40 inline-flex h-10 w-10 cursor-pointer items-center justify-center focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2 focus-visible:outline-none"
               initial={{ opacity: 0, scale: 0.6 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.6 }}
@@ -71,7 +70,12 @@ export default function EphemeralApp() {
                   : { duration: 0.2, ease: "easeOut" }
               }
             >
-              <Info aria-hidden="true" className="h-5 w-5" strokeWidth={2.25} />
+              <span
+                aria-hidden="true"
+                className="flex h-[34px] w-[22px] items-center justify-center bg-neutral-100 text-xl font-bold text-neutral-400 transition-colors group-hover:bg-neutral-200 group-hover:text-neutral-600"
+              >
+                i
+              </span>
             </motion.button>
           )}
         </AnimatePresence>
