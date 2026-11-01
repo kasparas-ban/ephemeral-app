@@ -12,7 +12,6 @@ import { useCallback, useEffect, useImperativeHandle, useRef } from "react";
 import { PrimitiveAtom, useSetAtom } from "jotai";
 
 import { TypingAction } from "@/lib/types";
-import { cn } from "@/lib/utils";
 
 import AnimatedText from "./animated-text";
 
@@ -54,8 +53,8 @@ export default function Composition({
   onCompositionEnd,
   onKeyDown,
   testId,
-  textClassName,
-  caretClassName,
+  textClassName = "",
+  caretClassName = "bg-gray-600",
 }: CompositionProps) {
   const editableRef = useRef<HTMLDivElement>(null);
   const textContainerRef = useRef<HTMLDivElement>(null);
@@ -188,21 +187,14 @@ export default function Composition({
       <div
         ref={textContainerRef}
         data-testid={testId ? `${testId}-text` : "composition-text"}
-        className={cn(
-          "pointer-events-none absolute right-[3px] whitespace-nowrap",
-          textClassName,
-        )}
+        className={`pointer-events-none absolute right-[3px] whitespace-nowrap ${textClassName}`}
       />
 
       {/* Custom caret */}
       <div className="pointer-events-none h-auto">
         <div
           ref={caretRef}
-          className={cn(
-            "h-full w-0.5 border-r-2 border-none bg-gray-600",
-            caretClassName,
-            styles["caret"],
-          )}
+          className={`h-full w-0.5 ${caretClassName} ${styles.caret}`}
         />
         <div className="absolute inset-0 left-0.5 w-8 bg-white" />
       </div>
