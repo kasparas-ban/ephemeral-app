@@ -4,12 +4,6 @@ import { useEffect, useState } from "react";
 
 import { motion } from "motion/react";
 
-/*
- * Background for the info screen: short phrases from imagined strangers type
- * themselves in at shifting spots, linger, then blur away and come back
- * somewhere else as something new.
- */
-
 const PHRASES = [
   "is anyone here?",
   "i miss the sea",
@@ -27,7 +21,6 @@ const PHRASES = [
   "almost spring",
 ];
 
-// One zone per slot (in % of the screen) so phrases don't pile on each other.
 const ZONES = [
   { x: [3, 32], y: [5, 18] },
   { x: [50, 72], y: [8, 22] },
@@ -49,7 +42,6 @@ type Phrase = {
   opacity: number;
 };
 
-// Phrase each slot is showing, so two slots never type the same thing.
 type ShownPhrases = Map<number, string>;
 
 export default function StrangerPhrases() {
@@ -89,7 +81,7 @@ function TypingPhrase({
   zoneIndex: number;
   shown: ShownPhrases;
 }) {
-  // First phrase is fixed per slot so the opening set is always distinct.
+  // Fixed, not random: StrictMode runs initializers twice, which caused duplicates.
   const [phrase, setPhrase] = useState(() =>
     createPhrase(zoneIndex, PHRASES[zoneIndex * 2]),
   );

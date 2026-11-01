@@ -6,42 +6,21 @@ import { useReducedMotion } from "motion/react";
 
 import { FloatingLetter, letterFloat, sampleMirrored } from "./floating";
 
-/*
- * The title's letters float in 3D. Each letter has a depth, z (0 = on the
- * focal plane, 1 = furthest back), and hangs on a loose chain: two unseen
- * pull points glide along the word drawing letters back, and springs tie each
- * letter to its neighbours, so the letters beside a pulled one follow part of
- * the way.
- *
- * Depth drives everything a camera would show: further letters get smaller,
- * slip slightly toward the centre of the word, and lose focus. Each letter is
- * drawn as its own quad, far to near, with a lens (disc) blur sized by its
- * depth, so overlapping letters composite like real layers.
- */
-
-// Look
-const MAX_RADIUS_PX = 9; // blur disc radius at z = 1, CSS px
-const MIN_SCALE = 0.86; // letter size at z = 1
-const CONVERGENCE = 0.5; // how far receding letters slide toward the centre
+const MAX_RADIUS_PX = 9;
+const MIN_SCALE = 0.86;
+const CONVERGENCE = 0.5;
 const MAX_DPR = 2;
-const TAPS = 128; // enough samples that the wide blur stays smooth, not grainy
-const INK = 0.04; // neutral-950
-const CELL_PAD_PX = Math.ceil(MAX_RADIUS_PX / MIN_SCALE) + 4; // blur room per letter in the atlas
-const CANVAS_PAD_PX = MAX_RADIUS_PX + 12; // blur + float room around the word
+const TAPS = 128;
+const INK = 0.04;
+const CELL_PAD_PX = Math.ceil(MAX_RADIUS_PX / MIN_SCALE) + 4;
+const CANVAS_PAD_PX = MAX_RADIUS_PX + 12;
 
-// Chain. Letters rest on the focal plane, tied to their neighbours.
-const NEIGHBOR_STIFFNESS = 5; // the string between letters
-const REST_STIFFNESS = 2.7; // each letter's pull back to the focal plane
+const NEIGHBOR_STIFFNESS = 5;
+const REST_STIFFNESS = 2.7;
 const DAMPING = 3.25;
 
-// Two pull points travel across the word in opposite directions, leave at one
-// end and re-enter at the other. Speed and strength drift on slow, unrelated
-// waves so the pattern doesn't read as a loop, but a point's speed never
-// reaches zero (wobble * 2π / wobblePeriod < speed), so the blur never stalls
-// or parks on a letter. Tuned in simulation: the blur pattern is nearly still
-// ~2% of the time, a letter stays soft ~9s typically and ~16s at most, some
-// area is clearly soft (4px+) ~99% of the time, soft groups average ~4
-// letters, and the whole word is soft together ~2% of the time.
+// Keep wobble * 2π / wobblePeriod < speed so a point never stops and the blur
+// never stalls.
 const PULL_POINTS = [
   {
     direction: 1,
@@ -62,22 +41,20 @@ const PULL_POINTS = [
     phase: 3.3,
   },
 ];
-const PULL_DEPTH = 1.6; // how far back a point draws the letter under it
-const PULL_WIDTH = 0.7; // spread of a point's pull, in letters
-const PULL_MIN_STRENGTH = 0.7; // a point's strength drifts between this and 1
-const PULL_MARGIN = 1; // letters beyond each end a point travels before re-entering
-// The chain runs on its own clock; 2 = half speed. Slows waves, drag and
-// sway together, so the motion keeps its character, just calmer.
+const PULL_DEPTH = 1.6;
+const PULL_WIDTH = 0.7;
+const PULL_MIN_STRENGTH = 0.7;
+const PULL_MARGIN = 1;
 const DEPTH_SLOWDOWN = 2;
-const FADE_IN_START_S = 1.5; // sharp while the title scales in (real time)
+const FADE_IN_START_S = 1.5;
 const FADE_IN_DURATION_S = 1.5;
 const STEP_S = 1 / 120;
 
 const VERTEX_SHADER = `
 attribute vec2 a_pos;
-uniform vec2 u_canvas;  // device px
-uniform vec2 u_center;  // device px, top-left origin
-uniform vec2 u_half;    // device px
+uniform vec2 u_canvas;
+uniform vec2 u_center;
+uniform vec2 u_half;
 varying vec2 v_local;
 void main() {
   v_local = a_pos * 0.5 + 0.5;
@@ -90,9 +67,9 @@ const FRAGMENT_SHADER = `
 precision highp float;
 varying vec2 v_local;
 uniform sampler2D u_atlas;
-uniform vec4 u_cell;      // atlas uv: x0, y0, x1, y1
-uniform vec2 u_atlasSize; // px
-uniform float u_radius;   // blur radius in atlas px
+uniform vec4 u_cell;
+uniform vec2 u_atlasSize;
+uniform float u_radius;
 
 const int TAPS = ${TAPS};
 const float GOLDEN_ANGLE = 2.39996323;
@@ -107,7 +84,6 @@ void main() {
   if (u_radius < 0.5) {
     a = texture2D(u_atlas, uv).a;
   } else {
-    // Even disc of samples on a golden-angle spiral: a lens aperture.
     float sum = 0.0;
     for (int i = 0; i < TAPS; i++) {
       float fi = float(i) + 0.5;
@@ -118,9 +94,7 @@ void main() {
     a = sum / float(TAPS);
   }
 
-  // Ink on white: average the light, not the ink. Coverage a over white is
-  // radiance 1 - a; re-encoding that to sRGB keeps defocused strokes airy
-  // rather than muddy. Faded in with the radius so sharp edges are untouched.
+  // Average light, not ink, so defocused strokes look airy rather than muddy.
   float lensA = 1.0 - toSrgb(1.0 - a);
   a = mix(a, lensA, smoothstep(0.5, 2.5, u_radius));
   gl_FragColor = vec4(vec3(${INK}) * a, a);
@@ -182,7 +156,6 @@ export default function DepthTitle({ word }: { word: string }) {
       if (!layout || !renderer || !fontReady) return;
       const seconds = (now - start) / 1000;
 
-      // Fixed-step physics; after a long pause (hidden tab) skip ahead.
       simSeconds = Math.max(simSeconds, seconds - 0.25);
       while (simSeconds < seconds) {
         const fadeIn = smoothstep(
@@ -207,7 +180,7 @@ export default function DepthTitle({ word }: { word: string }) {
     resizeObserver.observe(row);
     measure();
 
-    // Canvas text can't swap fonts later, so wait for Space Mono first.
+    // Canvas text can't swap fonts later, so wait for the font first.
     document.fonts.load(layout!.font).finally(() => {
       if (disposed) return;
       fontReady = true;
@@ -215,7 +188,7 @@ export default function DepthTitle({ word }: { word: string }) {
     });
     raf = requestAnimationFrame(frame);
 
-    // iOS can drop WebGL state when the page is backgrounded; rebuild on return.
+    // iOS can drop WebGL state in the background.
     const onContextLost = (e: Event) => {
       e.preventDefault();
       renderer = null;
@@ -245,8 +218,7 @@ export default function DepthTitle({ word }: { word: string }) {
 
   return (
     <>
-      {/* Invisible copy keeps the layout and tells the canvas where letters go.
-          inline-block: ResizeObserver ignores size changes of inline boxes. */}
+      {/* inline-block: ResizeObserver ignores size changes of inline boxes. */}
       <span
         ref={rowRef}
         aria-hidden="true"
@@ -267,8 +239,6 @@ export default function DepthTitle({ word }: { word: string }) {
   );
 }
 
-/* ---- Layout ---- */
-
 type Layout = {
   dpr: number;
   font: string;
@@ -277,9 +247,7 @@ type Layout = {
   letters: { x: number; y: number; width: number; height: number }[];
 };
 
-// Where the invisible DOM copy put each letter, so the canvas draws them at
-// exactly the same spots. Offsets, not getBoundingClientRect: they ignore
-// the title's intro scale.
+// Offsets, not getBoundingClientRect: they ignore the title's intro scale.
 function measureLayout(
   row: HTMLSpanElement,
   ctx: CanvasRenderingContext2D,
@@ -302,7 +270,6 @@ function measureLayout(
   return {
     dpr: Math.min(window.devicePixelRatio || 1, MAX_DPR),
     font,
-    // CSS half-leading: glyphs sit centred in the line box.
     baseline: (lineHeight - (ascent + descent)) / 2 + ascent,
     word,
     letters: letterEls.map((el) => ({
@@ -314,15 +281,12 @@ function measureLayout(
   };
 }
 
-/* ---- The chain ---- */
-
 type Chain = { z: number[]; velocity: number[] };
 
 function createChain(count: number): Chain {
   return { z: Array(count).fill(0), velocity: Array(count).fill(0) };
 }
 
-// How far back the pull points want each letter right now (chain time).
 function pullTargets(count: number, seconds: number) {
   const loop = count - 1 + PULL_MARGIN * 2;
   const points = PULL_POINTS.map((p) => {
@@ -359,12 +323,10 @@ const smoothstep = (edge0: number, edge1: number, x: number) => {
   return t * t * (3 - 2 * t);
 };
 
-// `seconds` and `dt` are chain time; fadeIn (0-1) comes from real time.
 function stepChain(chain: Chain, seconds: number, dt: number, fadeIn: number) {
   const { z, velocity } = chain;
   const targets = pullTargets(z.length, seconds);
 
-  // Forces from the current positions, then integrate (semi-implicit Euler).
   const forces = z.map((zi, i) => {
     let force =
       REST_STIFFNESS * (fadeIn * targets[i] - zi) - DAMPING * velocity[i];
@@ -379,11 +341,8 @@ function stepChain(chain: Chain, seconds: number, dt: number, fadeIn: number) {
   });
 }
 
-/* ---- Drawing ---- */
-
 type Cell = { width: number; height: number };
 
-// One letter per atlas cell, centred, with its 2D float rotation baked in.
 function drawAtlas(
   ctx: CanvasRenderingContext2D,
   letters: string[],
@@ -417,7 +376,6 @@ type Quad = {
   radius: number;
 };
 
-// Project each letter by its depth and order the quads far to near.
 function buildQuads(
   chain: Chain,
   layout: Layout,
@@ -450,7 +408,6 @@ function buildQuads(
             ((cell.height * scale) / 2) * dpr,
           ],
           cell: [i / count, 0, (i + 1) / count, 1],
-          // Radius is in atlas pixels, which the quad shrinks by `scale`.
           radius: (MAX_RADIUS_PX * z * dpr) / scale,
         } satisfies Quad,
       };
@@ -490,7 +447,6 @@ function createRenderer(canvas: HTMLCanvasElement) {
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 
-  // Premultiplied "over": nearer letters drawn later cover farther ones.
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
 
@@ -526,8 +482,8 @@ function createRenderer(canvas: HTMLCanvasElement) {
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       }
     },
-    // Free GPU resources but keep the context: the same canvas may mount
-    // again (React dev double-mount) and getContext would return a lost one.
+    // Keep the context: a dev double-mount reuses the canvas, and a lost
+    // context can't be recreated.
     dispose() {
       gl.deleteTexture(texture);
       gl.deleteBuffer(buffer);

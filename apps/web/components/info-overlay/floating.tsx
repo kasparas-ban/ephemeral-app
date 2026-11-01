@@ -2,22 +2,15 @@
 
 import { motion } from "motion/react";
 
-// Deterministic per-letter "randomness" so the title looks organic but stable.
 const seeded = (i: number, salt: number) => {
   const v = Math.sin(i * 12.9898 + salt * 78.233) * 43758.5453;
   return v - Math.floor(v);
 };
 
-// Seeded value in [min, max] that stays at least minAbs away from zero,
-// like AnimatedText.randomFloat, so every letter visibly moves.
 const seededOffset = (i: number, salt: number, max: number, minAbs: number) =>
   (seeded(i, salt) < 0.5 ? -1 : 1) *
   (minAbs + seeded(i, salt + 10) * (max - minAbs));
 
-/*
- * Mirrors the canvas text float (AnimatedText.animateChar): each letter rocks
- * between two random y/rotate poses forever, scaled up for the title size.
- */
 export function letterFloat(i: number) {
   return {
     y0: seededOffset(i, 1, 4, 1.5),
@@ -28,7 +21,6 @@ export function letterFloat(i: number) {
   };
 }
 
-// DOM version of the float, used when the WebGL title can't run.
 export function FloatingLetter({
   char,
   index,
@@ -65,11 +57,9 @@ export function FloatingLetter({
   );
 }
 
-// Close match for motion's "easeInOut" (cubic-bezier(0.42, 0, 0.58, 1)).
 const easeInOut = (p: number) => 0.5 - 0.5 * Math.cos(Math.PI * p);
 
-// Same timing as motion's keyframes + ease per segment + repeatType "mirror",
-// so the WebGL title floats exactly like the DOM fallback.
+// Matches motion's mirrored keyframes so the canvas floats like the DOM fallback.
 export function sampleMirrored(
   keyframes: readonly number[],
   duration: number,
