@@ -8,17 +8,17 @@ const PHRASES = [
   "is anyone here?",
   "i miss the sea",
   "good night",
-  "it's raining again",
-  "hello",
+  "stay a little longer",
+  "hello?",
   "don't forget to breathe",
   "can't sleep",
-  "i said it out loud",
+  "no one will remember",
   "who are you?",
-  "coffee's gone cold",
-  "today was enough",
+  "i'm thinking of you",
+  "let it go",
   "i'm still here",
   "say something",
-  "almost spring",
+  "this will pass",
 ];
 
 const ZONES = [
