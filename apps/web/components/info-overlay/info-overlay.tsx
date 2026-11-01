@@ -2,17 +2,24 @@
 
 import { motion, type Transition, useReducedMotion } from "motion/react";
 
+import DepthTitle from "./depth-title";
+import StrangerPhrases from "./stranger-phrases";
+
+const EASE_OUT = [0.22, 1, 0.36, 1] as const;
+
 export default function InfoOverlay({ onClose }: { onClose: () => void }) {
   const reduceMotion = useReducedMotion();
   const instant = (transition: Transition) =>
     reduceMotion ? { duration: 0 } : transition;
+  const stagger = (delay: number, duration = 0.6) =>
+    instant({ delay, duration, ease: EASE_OUT });
 
   return (
     <motion.div
       role="dialog"
       aria-modal="true"
       aria-labelledby="app-info-title"
-      className="absolute inset-0 z-30 grid place-items-center px-6 text-neutral-950"
+      className="absolute inset-0 z-30 grid place-items-center overflow-hidden px-6 text-neutral-950"
       initial={{
         backgroundColor: "rgba(255, 255, 255, 0)",
         backdropFilter: "blur(0px)",
@@ -27,39 +34,51 @@ export default function InfoOverlay({ onClose }: { onClose: () => void }) {
       }}
       transition={instant({ duration: 0.2, ease: "easeOut" })}
     >
-      <motion.section
-        className="max-w-[min(34rem,calc(100vw-3rem))] text-center"
-        initial={{ filter: "blur(4px)", opacity: 0 }}
-        animate={{
-          filter: "blur(0px)",
-          opacity: 1,
-          transition: instant({ duration: 0.3, ease: "easeOut", delay: 0.1 }),
-        }}
+      <motion.div
+        className="absolute inset-0 grid place-items-center px-6"
         exit={{
           filter: "blur(5px)",
           opacity: 0,
           transition: instant({ duration: 0.2, ease: "easeOut" }),
         }}
       >
-        <h1
-          id="app-info-title"
-          className="text-2xl leading-tight font-semibold sm:text-3xl"
-        >
-          Ephemeral is a shared typing canvas.
-        </h1>
-        <p className="mt-4 text-sm leading-6 text-neutral-700 sm:text-base sm:leading-7">
-          Type and your words appear live in the space for everyone connected.
-          Other people&apos;s thoughts drift in as anonymous, temporary text,
-          then fade away so the room stays light, present, and unrecorded.
-        </p>
-        <button
-          type="button"
-          onClick={onClose}
-          className="mt-8 inline-flex items-center justify-center rounded-full border border-neutral-300 bg-white/85 px-6 py-2.5 text-sm font-medium text-neutral-900 shadow-sm backdrop-blur transition hover:bg-white focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2 focus-visible:outline-none active:scale-95"
-        >
-          Back
-        </button>
-      </motion.section>
+        {!reduceMotion && <StrangerPhrases />}
+        <section className="relative flex flex-col items-center text-center">
+          <motion.h1
+            id="app-info-title"
+            aria-label="Ephemeral"
+            className="relative text-[clamp(3.25rem,15vw,9rem)] leading-none font-bold tracking-[-0.06em]"
+            initial={{ opacity: 0, scale: 0.94, filter: "blur(14px)" }}
+            animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+            transition={stagger(0.1, 1.4)}
+          >
+            <DepthTitle word="ephemeral" />
+          </motion.h1>
+          <motion.p
+            className="mt-8 max-w-[20rem] text-sm leading-6 text-neutral-500"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={stagger(0.6)}
+          >
+            words drift in from strangers, then they&apos;re gone.
+          </motion.p>
+          <motion.div
+            className="mt-12"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={stagger(0.85)}
+          >
+            <button
+              type="button"
+              onClick={onClose}
+              className="group relative text-xs tracking-[0.25em] text-neutral-400 uppercase transition-colors hover:text-neutral-950 focus-visible:text-neutral-950 focus-visible:outline-none"
+            >
+              Back
+              <span className="absolute -bottom-1.5 left-0 h-px w-0 bg-current transition-[width] duration-300 ease-out group-hover:w-full group-focus-visible:w-full" />
+            </button>
+          </motion.div>
+        </section>
+      </motion.div>
     </motion.div>
   );
 }

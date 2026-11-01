@@ -40,12 +40,10 @@ test("info button opens a blurred full-screen explanation", async ({
 
   await page.getByRole("button", { name: "Show app information" }).click();
 
-  const dialog = page.getByRole("dialog", {
-    name: "Ephemeral is a shared typing canvas.",
-  });
+  const dialog = page.getByRole("dialog", { name: "Ephemeral" });
   await expect(dialog).toBeVisible();
   await expect(dialog).toContainText(
-    "Type and your words appear live in the space for everyone connected.",
+    "words drift in from strangers, then they're gone.",
   );
 
   const backdropFilter = await dialog.evaluate(
@@ -57,7 +55,7 @@ test("info button opens a blurred full-screen explanation", async ({
   await page.keyboard.press("Escape");
   await expect(dialog).toBeVisible();
 
-  await page.getByRole("button", { name: "Close app information" }).click();
+  await dialog.getByRole("button", { name: "Back" }).click();
   await expect(dialog).toHaveCount(0);
 });
 
