@@ -2,6 +2,7 @@ package realtime
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 )
@@ -207,56 +208,6 @@ func TestHub_BroadcastMessageExceptSkipsOnMarshalError(t *testing.T) {
 	}
 }
 
-func TestHub_PresenceSkipsClientsWithFullBuffer(t *testing.T) {
-	h := NewHub()
-	go h.Run()
-
-	blocked := newTestClient(h, "blocked", 1)
-	other := newTestClient(h, "other", 10)
-
-	h.Register(blocked)
-
-	// Drain the initial presence message sent to the blocked client so we can fill the buffer.
-	drainChannel(blocked.send)
-
-	// Fill the blocked client's send buffer so future sends should be skipped.
-	blocked.send <- []byte("sentinel")
-
-	h.Register(other)
-
-	// Give the hub time to process the registration and attempted presence broadcast.
-	time.Sleep(50 * time.Millisecond)
-
-	select {
-	case msg := <-blocked.send:
-		if string(msg) != "sentinel" {
-			t.Fatalf("expected sentinel message to remain, got %s", string(msg))
-		}
-	default:
-		t.Fatalf("expected blocked client's channel to remain full")
-	}
-
-	if raw := readWithTimeout(blocked.send, 100*time.Millisecond); raw != nil {
-		t.Fatalf("expected no additional presence message for blocked client, got %s", string(raw))
-	}
-
-	// Newly registered client should receive presence containing the blocked client
-	if raw := readWithTimeout(other.send, 200*time.Millisecond); raw == nil {
-		t.Fatalf("expected presence message for newly registered client, got none")
-	} else {
-		var presence PresenceMessage
-		if err := json.Unmarshal(raw, &presence); err != nil {
-			t.Fatalf("unmarshal presence for other: %v", err)
-		}
-		if presence.Type != "presence" {
-			t.Fatalf("expected presence type, got %q", presence.Type)
-		}
-		if len(presence.Users) != 1 || presence.Users[0].ID != blocked.userID {
-			t.Fatalf("expected presence with blocked user for newly registered client, got %+v", presence.Users)
-		}
-	}
-}
-
 func TestHub_UnregisterUnknownClientDoesNothing(t *testing.T) {
 	h := NewHub()
 	go h.Run()
@@ -285,46 +236,87 @@ func TestHub_UnregisterUnknownClientDoesNothing(t *testing.T) {
 	}
 }
 
-func TestHub_BroadcastMessageExceptSkipsFullBuffers(t *testing.T) {
+// expectDisconnected drains whatever the client already had queued and checks
+// that the hub then closed its send channel.
+func expectDisconnected(t *testing.T, c *Client) {
+	t.Helper()
+
+	timeout := time.After(500 * time.Millisecond)
+	for {
+		select {
+		case _, ok := <-c.send:
+			if !ok {
+				return
+			}
+		case <-timeout:
+			t.Fatalf("expected %s to be disconnected", c.userID)
+		}
+	}
+}
+
+// lastPresence returns the users in the last presence message sent to c.
+func lastPresence(t *testing.T, c *Client) []PresenceUser {
+	t.Helper()
+
+	var users []PresenceUser
+	found := false
+	for raw := readWithTimeout(c.send, 100*time.Millisecond); raw != nil; raw = readWithTimeout(c.send, 100*time.Millisecond) {
+		var presence PresenceMessage
+		if err := json.Unmarshal(raw, &presence); err == nil && presence.Type == "presence" {
+			users = presence.Users
+			found = true
+		}
+	}
+
+	if !found {
+		t.Fatalf("expected a presence message for %s", c.userID)
+	}
+	return users
+}
+
+func TestHub_BroadcastDisconnectsClientsThatFallBehind(t *testing.T) {
 	h := NewHub()
 	go h.Run()
 
 	sender := newTestClient(h, "sender", 10)
-	blocked := newTestClient(h, "blocked", 1)
+	slow := newTestClient(h, "slow", 1)
 	open := newTestClient(h, "open", 10)
-
 	h.Register(sender)
-	h.Register(blocked)
 	h.Register(open)
-
-	// Drain any presence traffic before assertions.
+	h.Register(slow)
 	drainChannel(sender.send)
-	drainChannel(blocked.send)
 	drainChannel(open.send)
+	drainChannel(slow.send)
 
-	blocked.send <- []byte("sentinel")
+	slow.send <- []byte("unread")
+	h.BroadcastMessageExcept(sender, RelayMessage{Type: "typing_update", Char: "a"})
 
-	payload := map[string]any{
-		"type": "custom",
-		"body": "hello",
+	// Check the open client first: reading the slow client's queue early would
+	// make room in its buffer before the hub tries to send.
+	raw := readWithTimeout(open.send, 200*time.Millisecond)
+	if raw == nil || !strings.Contains(string(raw), "typing_update") {
+		t.Fatalf("expected the broadcast for the open client, got %q", raw)
 	}
-
-	h.BroadcastMessageExcept(sender, payload)
-
-	if raw := readWithTimeout(open.send, 200*time.Millisecond); raw == nil {
-		t.Fatalf("expected broadcast for open client, got none")
+	if users := lastPresence(t, open); len(users) != 1 || users[0].ID != sender.userID {
+		t.Fatalf("expected presence without the slow client, got %+v", users)
 	}
+	expectDisconnected(t, slow)
+}
 
-	select {
-	case msg := <-blocked.send:
-		if string(msg) != "sentinel" {
-			t.Fatalf("expected sentinel message to remain for blocked client, got %s", string(msg))
-		}
-	default:
-		// If the channel were cleared, the sentinel would have been consumed.
-	}
+func TestHub_PresenceDisconnectsClientsThatFallBehind(t *testing.T) {
+	h := NewHub()
+	go h.Run()
 
-	if raw := readWithTimeout(sender.send, 150*time.Millisecond); raw != nil {
-		t.Fatalf("expected sender not to receive broadcast, got %s", string(raw))
+	slow := newTestClient(h, "slow", 1)
+	h.Register(slow)
+	drainChannel(slow.send)
+	slow.send <- []byte("unread")
+
+	joining := newTestClient(h, "joining", 10)
+	h.Register(joining)
+
+	if users := lastPresence(t, joining); len(users) != 0 {
+		t.Fatalf("expected the joining client to end up alone, got %+v", users)
 	}
+	expectDisconnected(t, slow)
 }
