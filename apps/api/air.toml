@@ -1,6 +1,7 @@
 root = "."
-cmd = "go build -o ./bin/api . && ./bin/api"
+
+[build]
+cmd = "go build -o ./bin/api ."
+bin = "./bin/api"
 include_ext = ["go"]
 exclude_dir = ["bin", "node_modules"]
-
-

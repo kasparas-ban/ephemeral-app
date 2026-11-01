@@ -44,15 +44,15 @@ pnpm install
 pnpm dev
 ```
 
-| Command                 | Purpose                                                |
-| ----------------------- | ------------------------------------------------------ |
-| `pnpm dev`              | Run the web app and API with hot reload.               |
-| `pnpm --filter web dev` | Run only the web app (or `--filter api` for the API).  |
-| `pnpm check`            | Check formatting, lint, types, and run unit tests.     |
-| `pnpm verify`           | Run `check` plus Chromium end-to-end tests.            |
-| `pnpm test:e2e`         | Run end-to-end tests in Chromium, Firefox, and WebKit. |
-| `pnpm format`           | Format with Prettier and gofmt.                        |
-| `pnpm build`            | Build both apps.                                       |
+| Command                 | Purpose                                                               |
+| ----------------------- | --------------------------------------------------------------------- |
+| `pnpm dev`              | Run the web app and API with hot reload.                              |
+| `pnpm --filter web dev` | Run only the web app (or `--filter api` for the API).                 |
+| `pnpm check`            | Check formatting, lint, types, and run unit tests.                    |
+| `pnpm verify`           | Run `check` plus Chromium end-to-end tests.                           |
+| `pnpm test:e2e`         | Run end-to-end tests in Chromium, Firefox, WebKit, and mobile Chrome. |
+| `pnpm format`           | Format with Prettier and gofmt.                                       |
+| `pnpm build`            | Build both apps.                                                      |
 
 Run `pnpm verify` before calling work done. End-to-end tests need browsers:
 `pnpm exec playwright install chromium firefox webkit`. Set
@@ -60,8 +60,9 @@ Run `pnpm verify` before calling work done. End-to-end tests need browsers:
 
 ## Configuration
 
-The web app finds the API through `NEXT_PUBLIC_API_URL`. Defaults live in
-`apps/web/.env.development` and `apps/web/.env.production`.
+The web app finds the API through `NEXT_PUBLIC_API_URL`. The development
+default lives in `apps/web/.env.development`; set the production value in the
+hosting environment.
 
 The API only accepts WebSocket connections from allowed browser origins. In
 production, set `ALLOWED_ORIGINS` to the web app's origins, comma separated.

@@ -51,7 +51,8 @@ A Turborepo monorepo with pnpm workspaces.
   - `components/ephemeral` renders local and remote Compositions.
   - `components/info-overlay` is the info screen.
   - `lib` holds the WebSocket client, message types, and typing logic.
-  - `stores` holds Jotai atoms for connection state and presence.
+  - `stores` holds Jotai atoms for the WebSocket client, presence, and the
+    visible viewport.
 - `apps/api` is the Go `net/http` API. `realtime` contains the Hub and Client
   that relay messages over WebSocket.
 - `e2e` contains Playwright tests that run the real web app and API.

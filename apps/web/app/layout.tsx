@@ -12,8 +12,9 @@ const spaceMono = Space_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Ephemeral Notes",
-  description: "Let go of your thoughts, one note at a time.",
+  title: "Ephemeral",
+  description:
+    "Type to strangers in real time. Words blur away; nothing is saved.",
 };
 
 export default function RootLayout({
