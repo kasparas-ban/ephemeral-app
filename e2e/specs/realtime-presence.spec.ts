@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, type Page, test, type WebSocketRoute } from "@playwright/test";
 import {
   closeUser,
   openTwoUsers,
@@ -41,6 +41,41 @@ test("three users each see all other connected users", async ({ browser }) => {
   await closeUser(third);
   await closeUser(second);
   await closeUser(first);
+});
+
+test("remote users clear while disconnected and return after reconnecting", async ({
+  browser,
+}) => {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  let online = true;
+  let socket: WebSocketRoute | undefined;
+
+  await page.routeWebSocket(/\/connect$/, (route) => {
+    if (!online) {
+      void route.close();
+      return;
+    }
+    socket = route;
+    route.connectToServer();
+  });
+  await page.goto("/");
+  const other = await openUser(browser);
+
+  await expect(remoteCompositions(page)).toHaveCount(1);
+  await expect(remoteCompositions(other.page)).toHaveCount(1);
+
+  online = false;
+  await socket?.close();
+  await expect(remoteCompositions(page)).toHaveCount(0);
+  await expect(remoteCompositions(other.page)).toHaveCount(0);
+
+  online = true;
+  await expect(remoteCompositions(page)).toHaveCount(1);
+  await expect(remoteCompositions(other.page)).toHaveCount(1);
+
+  await closeUser(other);
+  await context.close();
 });
 
 test("connected user slots do not overlap the local slot", async ({

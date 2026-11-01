@@ -5,11 +5,7 @@ import { useEffect } from "react";
 import { useSetAtom } from "jotai";
 
 import { WSClient } from "@/lib/ws";
-import {
-  connectedUsersAtom,
-  connectionStatusAtom,
-  wsClientAtom,
-} from "@/stores/stores";
+import { connectedUsersAtom, wsClientAtom } from "@/stores/stores";
 
 export const ConnectionProvider = ({
   children,
@@ -18,7 +14,6 @@ export const ConnectionProvider = ({
 }) => {
   const setWsClient = useSetAtom(wsClientAtom);
   const setConnectedUsers = useSetAtom(connectedUsersAtom);
-  const setStatus = useSetAtom(connectionStatusAtom);
 
   useEffect(() => {
     const ws = new WSClient();
@@ -26,7 +21,10 @@ export const ConnectionProvider = ({
     const unsubscribeMessage = ws.onMessage((msg) => {
       if (msg.type === "presence") setConnectedUsers(msg.users);
     });
-    const unsubscribeStatus = ws.onStatus(setStatus);
+    // Without a connection, nobody else is here; a reconnect brings fresh Presence.
+    const unsubscribeStatus = ws.onStatus((status) => {
+      if (status !== "open") setConnectedUsers([]);
+    });
 
     ws.connect();
     setWsClient(ws);
@@ -37,7 +35,7 @@ export const ConnectionProvider = ({
       ws.disconnect();
       setWsClient(null);
     };
-  }, [setWsClient, setConnectedUsers, setStatus]);
+  }, [setWsClient, setConnectedUsers]);
 
   return children;
 };
