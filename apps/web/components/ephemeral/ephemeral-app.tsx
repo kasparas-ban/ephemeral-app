@@ -34,6 +34,7 @@ export default function EphemeralApp() {
   return (
     <div className="font-sans">
       <main
+        inert={isInfoOpen}
         className="fixed overflow-hidden"
         style={{
           left: viewportRect.x,

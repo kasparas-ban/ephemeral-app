@@ -100,6 +100,31 @@ test("typing right after enter starts the next composition", async ({
   await closeUser(first);
 });
 
+test("typing while the info screen is open is not relayed", async ({
+  browser,
+  isMobile,
+}) => {
+  test.skip(isMobile, "desktop keyboard focus");
+  const { first, second } = await openTwoUsers(browser);
+
+  await first.page
+    .getByRole("button", { name: "Show app information" })
+    .click();
+  const dialog = first.page.getByRole("dialog", { name: "Ephemeral" });
+  await expect(dialog).toBeVisible();
+  await first.page.keyboard.type("secret");
+
+  await dialog.getByRole("button", { name: "Back" }).click();
+  await expect(dialog).toHaveCount(0);
+  await first.page.keyboard.type("ok!");
+
+  await expect(localText(first.page)).toHaveText("ok!");
+  await expectCompositionText(second.page, "ok!");
+
+  await closeUser(second);
+  await closeUser(first);
+});
+
 test("beforeinput delete relays as a back action", async ({ browser }) => {
   const { first, second } = await openTwoUsers(browser);
 

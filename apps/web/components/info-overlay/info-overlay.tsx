@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+
 import { motion, type Transition, useReducedMotion } from "motion/react";
 
 import useKeyboardStableHeight from "@/hooks/useKeyboardStableHeight";
@@ -16,6 +18,15 @@ export default function InfoOverlay({ onClose }: { onClose: () => void }) {
     reduceMotion ? { duration: 0 } : transition;
   const stagger = (delay: number, duration = 0.6) =>
     instant({ delay, duration, ease: EASE_OUT });
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
 
   return (
     <motion.div
@@ -74,6 +85,7 @@ export default function InfoOverlay({ onClose }: { onClose: () => void }) {
           >
             <button
               type="button"
+              autoFocus
               onClick={onClose}
               className="group relative text-xs tracking-[0.25em] text-neutral-400 uppercase transition-colors hover:text-neutral-950 focus-visible:text-neutral-950 focus-visible:outline-none"
             >

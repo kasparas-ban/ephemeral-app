@@ -1,6 +1,12 @@
 "use client";
 
-import type { CompositionEvent, FormEvent, KeyboardEvent, Ref } from "react";
+import type {
+  CompositionEvent,
+  FocusEvent,
+  FormEvent,
+  KeyboardEvent,
+  Ref,
+} from "react";
 import { useCallback, useEffect, useImperativeHandle, useRef } from "react";
 
 import { PrimitiveAtom, useSetAtom } from "jotai";
@@ -119,6 +125,24 @@ export default function Composition({
     if (autoFocus) focusEditable();
   }, [autoFocus, focusEditable]);
 
+  // Typing with nothing focused, e.g. after clicking empty space or closing
+  // the info screen, goes to the Composition.
+  useEffect(() => {
+    if (!editable || !keepFocus) return;
+
+    const handleKeyDown = () => {
+      if (document.activeElement === document.body) focusEditable();
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [editable, keepFocus, focusEditable]);
+
+  // Keep focus unless it moved to another control, so Tab still works.
+  const handleBlur = (e: FocusEvent<HTMLDivElement>) => {
+    if (!e.relatedTarget) focusEditable();
+  };
+
   useEffect(() => {
     if (!textContainerRef.current) return;
 
@@ -194,7 +218,7 @@ export default function Composition({
         enterKeyHint="done"
         inputMode="text"
         spellCheck={false}
-        onBlur={editable && keepFocus ? focusEditable : undefined}
+        onBlur={editable && keepFocus ? handleBlur : undefined}
         onInput={editable ? clearEditable : undefined}
         onCompositionUpdate={
           editable ? (e) => onCompositionUpdate?.(e.data) : undefined

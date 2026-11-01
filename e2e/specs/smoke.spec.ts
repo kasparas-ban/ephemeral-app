@@ -52,11 +52,48 @@ test("info button opens a blurred full-screen explanation", async ({
   expect(backdropFilter).not.toBe("none");
 
   await dialog.click({ position: { x: 8, y: 8 } });
-  await page.keyboard.press("Escape");
   await expect(dialog).toBeVisible();
 
   await dialog.getByRole("button", { name: "Back" }).click();
   await expect(dialog).toHaveCount(0);
+});
+
+test("keyboard users can open and close the info screen, then keep typing", async ({
+  isMobile,
+  page,
+}) => {
+  test.skip(isMobile, "desktop keyboard focus");
+
+  await page.goto("/");
+  await expect(localInput(page)).toBeFocused();
+
+  await page.keyboard.press("Tab");
+  const infoButton = page.getByRole("button", { name: "Show app information" });
+  await expect(infoButton).toBeFocused();
+
+  await page.keyboard.press("Enter");
+  const dialog = page.getByRole("dialog", { name: "Ephemeral" });
+  await expect(dialog.getByRole("button", { name: "Back" })).toBeFocused();
+
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+
+  await page.keyboard.type("hi");
+  await expect(localText(page)).toHaveText("hi");
+});
+
+test("clicking empty space after tabbing away still lets you type", async ({
+  isMobile,
+  page,
+}) => {
+  test.skip(isMobile, "desktop keyboard focus");
+
+  await page.goto("/");
+  await page.keyboard.press("Tab");
+  await page.mouse.click(10, 300);
+
+  await page.keyboard.type("ok");
+  await expect(localText(page)).toHaveText("ok");
 });
 
 test("mobile shows Start typing while the virtual keyboard is closed", async ({
