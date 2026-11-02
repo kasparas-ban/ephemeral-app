@@ -63,10 +63,10 @@ export function compositionToActions(
     { length: applied.length - common },
     (): TypingAction => ({ kind: "back" }),
   );
-  const chars = Array.from(
-    next.slice(common),
-    (char): TypingAction => ({ kind: "char", char }),
-  );
+  const chars = Array.from(next.slice(common), (char): TypingAction => ({
+    kind: "char",
+    char,
+  }));
 
   return [...backs, ...chars];
 }

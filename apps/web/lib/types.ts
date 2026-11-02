@@ -3,9 +3,7 @@ export type Presence = {
 };
 
 export type TypingAction =
-  | { kind: "char"; char: string }
-  | { kind: "back" }
-  | { kind: "clear" };
+  { kind: "char"; char: string } | { kind: "back" } | { kind: "clear" };
 
 export type TypingUpdate = {
   userId: string;
@@ -42,6 +40,4 @@ export type ClientTypingBack = {
 };
 
 export type ClientMessage =
-  | ClientTypingUpdate
-  | ClientTypingClear
-  | ClientTypingBack;
+  ClientTypingUpdate | ClientTypingClear | ClientTypingBack;

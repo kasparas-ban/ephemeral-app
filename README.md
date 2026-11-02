@@ -35,7 +35,7 @@ The repository is a Turborepo monorepo:
 | `apps/api` | Go `net/http` WebSocket relay (localhost:8080)  |
 | `e2e`      | Playwright tests against the real web app + API |
 
-You need Node.js with pnpm, and Go 1.25 or later. The Go dev tools (Air,
+You need Node.js with pnpm, and Go 1.26 or later. The Go dev tools (Air,
 staticcheck) are pinned in `apps/api/go.mod` and run with `go tool`, so there
 is nothing else to install.
 
